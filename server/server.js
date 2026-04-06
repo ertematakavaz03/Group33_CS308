@@ -25,8 +25,10 @@ app.use((req, res, next) => {
 });
 
 const authRoutes = require('./routes/auth');
+const productsRoutes = require('./routes/products');
 
 app.use('/api/auth', authRoutes);
+app.use('/api/products', productsRoutes);
 
 app.get('/', (req, res) => {
     res.send('Server is running: CS 308 Marketplace API');
