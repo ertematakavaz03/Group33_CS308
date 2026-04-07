@@ -20,7 +20,7 @@ const Navigation = () => {
       borderBottom: 'none'
     }}>
       <div className="navbar-logo-container">
-        <Link to="/">
+        <Link to={isDashboard ? "/dashboard" : "/"}>
           <img 
             src="/logo.png" 
             alt="PazarYolu Logo" 

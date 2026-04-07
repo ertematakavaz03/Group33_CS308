@@ -21,5 +21,7 @@ CREATE TABLE IF NOT EXISTS products (
     distributor VARCHAR(255),
     shop_owner_id INT REFERENCES users(id),
     status VARCHAR(50) DEFAULT 'pending',
+    category VARCHAR(255),
+    image_url TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
