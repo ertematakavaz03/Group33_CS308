@@ -35,7 +35,12 @@ const Login = () => {
 
       setError('');
       console.log('Login successful:', data);
-      navigate('/dashboard');
+      
+      // --- ADD THIS LINE ---
+      // Save the user data to localStorage so the Dashboard knows you are logged in
+      localStorage.setItem('user', JSON.stringify(data)); 
+      
+      navigate('/');
     } catch (err) {
       setError('Server Error. Please try again later.');
     }
