@@ -3,14 +3,30 @@ import { useNavigate } from 'react-router-dom';
 
 const Cart = () => {
   const navigate = useNavigate();
+
+  const getCartKey = () => {
+    const savedUser = localStorage.getItem('user');
+    if (!savedUser) return 'guest_cart';
+
+    const user = JSON.parse(savedUser);
+    return `cart_user_${user.id}`;
+  };
+
+  const user = JSON.parse(localStorage.getItem('user') || 'null');
+
   const [cart, setCart] = useState(() => {
-    const savedCart = localStorage.getItem('cart');
+    const savedCart = localStorage.getItem(getCartKey());
     return savedCart ? JSON.parse(savedCart) : [];
   });
 
   useEffect(() => {
-    localStorage.setItem('cart', JSON.stringify(cart));
+    localStorage.setItem(getCartKey(), JSON.stringify(cart));
   }, [cart]);
+    
+  useEffect(() => {
+    const savedCart = localStorage.getItem(getCartKey());
+    setCart(savedCart ? JSON.parse(savedCart) : []);
+  }, []);
 
   const handleIncrease = (id) => {
     setCart((prevCart) =>
@@ -61,42 +77,69 @@ const Cart = () => {
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
-          marginBottom: '2rem',
+          marginBottom: '2.25rem',
           flexWrap: 'wrap',
           gap: '1rem'
         }}
       >
         <div>
+          <div
+            style={{
+              fontSize: '0.95rem',
+              color: 'var(--text-muted)',
+              marginBottom: '0.6rem',
+              fontWeight: '600'
+            }}
+          >
+          </div>
+
           <h1
             style={{
-              fontSize: '2.3rem',
+              fontSize: '2.6rem',
               fontWeight: '800',
               color: 'var(--text-dark)',
-              marginBottom: '0.4rem'
+              marginBottom: '0.5rem',
+              lineHeight: '1.1'
             }}
           >
             Your <span style={{ color: 'var(--pazaryolu-red)' }}>Cart</span>
           </h1>
-          <p style={{ color: 'var(--text-muted)', margin: 0 }}>
-            Review your selected items before checkout.
+
+          <p
+            style={{
+              color: 'var(--text-muted)',
+              margin: 0,
+              fontSize: '1.05rem'
+            }}
+          >
+            Review your selected items before checkout or return to the main page to browse products.
           </p>
         </div>
 
-        <button
-          onClick={() => navigate('/dashboard')}
+        <div
           style={{
-            background: '#fff',
-            border: '1px solid #e5e7eb',
-            borderRadius: '14px',
-            padding: '0.9rem 1.2rem',
-            cursor: 'pointer',
-            fontWeight: '700',
-            color: 'var(--text-dark)',
-            boxShadow: '0 4px 12px rgba(0,0,0,0.04)'
+            display: 'flex',
+            gap: '0.8rem',
+            flexWrap: 'wrap'
           }}
         >
-          ← Back to Dashboard
-        </button>
+          <button
+            type="button"
+            onClick={() => navigate('/')}
+            style={{
+              background: 'var(--pazaryolu-red)',
+              color: '#fff',
+              border: 'none',
+              borderRadius: '14px',
+              padding: '0.95rem 1.25rem',
+              cursor: 'pointer',
+              fontWeight: '700',
+              boxShadow: '0 6px 14px rgba(178, 34, 34, 0.18)'
+            }}
+          >
+            Back to Home
+          </button>
+        </div>
       </div>
 
       {cart.length === 0 ? (
@@ -116,7 +159,7 @@ const Cart = () => {
             Add some products from the dashboard to see them here.
           </p>
           <button
-            onClick={() => navigate('/dashboard')}
+            onClick={() => navigate('/')}
             style={{
               background: 'var(--pazaryolu-red)',
               color: '#fff',
@@ -359,7 +402,17 @@ const Cart = () => {
             </div>
 
             <button
-              style={{
+            onClick={() => {
+                if (!user) {
+                navigate('/login', {
+                    state: { successMessage: 'Please log in to continue with checkout.' }
+                });
+                return;
+                }
+
+                alert('Checkout flow can continue here.');
+            }}
+            style={{
                 width: '100%',
                 background: 'var(--pazaryolu-red)',
                 color: '#fff',
@@ -370,9 +423,9 @@ const Cart = () => {
                 fontWeight: '800',
                 fontSize: '1rem',
                 marginBottom: '0.8rem'
-              }}
+            }}
             >
-              Proceed to Checkout
+            Proceed to Checkout
             </button>
 
             <button

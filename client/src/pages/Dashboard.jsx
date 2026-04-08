@@ -19,19 +19,33 @@ const Dashboard = () => {
   const [error, setError] = useState(null);
   const navigate = useNavigate();
 
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
+const [user, setUser] = useState(() => {
+  const savedUser = localStorage.getItem('user');
+  return savedUser ? JSON.parse(savedUser) : null;
+});
 
-  useEffect(() => {
+useEffect(() => {
+  const syncUser = () => {
     const savedUser = localStorage.getItem('user');
-    if (savedUser) {
-      setIsLoggedIn(true);
-    }
-  }, []);
-
-  const handleSignOut = () => {
-    localStorage.removeItem('user');
-    setIsLoggedIn(false);
+    setUser(savedUser ? JSON.parse(savedUser) : null);
   };
+
+  syncUser();
+  window.addEventListener('storage', syncUser);
+  window.addEventListener('userChanged', syncUser);
+
+  return () => {
+    window.removeEventListener('storage', syncUser);
+    window.removeEventListener('userChanged', syncUser);
+  };
+}, []);
+
+const handleSignOut = () => {
+  localStorage.removeItem('user');
+  setUser(null);
+  window.dispatchEvent(new Event('userChanged'));
+  navigate('/');
+};
 
   const getCartKey = () => {
     const savedUser = localStorage.getItem('user');
@@ -118,26 +132,34 @@ const Dashboard = () => {
         
         <div className="navbar-links" style={{ display: 'flex', gap: '15px', alignItems: 'center' }}>
           
-          {isLoggedIn ? (
-            <button 
-              onClick={handleSignOut} 
-              className="nav-button nav-button-primary"
-              style={{ border: 'none', fontFamily: 'inherit', cursor: 'pointer' }}
-            >
-              Sign Out
-            </button>
-          ) : (
-            <>
-              {/* Login now has the primary class so it is white with red text */}
-              <Link to="/login" className="nav-button nav-button-primary">Login</Link>
-              <Link to="/signup" className="nav-button nav-button-primary">Sign Up</Link>
-            </>
-          )}
-
-          {/* Cart is now a <Link> instead of a <button> so its shape matches exactly! */}
-          <Link to="/cart" className="nav-button nav-button-primary">
-            Cart ({cart.reduce((total, item) => total + item.quantity, 0)})
+      {user ? (
+        <>
+          <Link
+            to="/profile"
+            className="nav-button nav-button-primary"
+            style={{ textDecoration: 'none' }}
+          >
+            {user.name}
           </Link>
+
+          <button
+            onClick={handleSignOut}
+            className="nav-button nav-button-primary"
+            style={{ border: 'none', fontFamily: 'inherit', cursor: 'pointer' }}
+          >
+            Sign Out
+          </button>
+        </>
+      ) : (
+        <>
+          <Link to="/login" className="nav-button nav-button-primary">Login</Link>
+          <Link to="/signup" className="nav-button nav-button-primary">Sign Up</Link>
+        </>
+      )}
+
+      <Link to="/cart" className="nav-button nav-button-primary">
+        Cart ({cart.reduce((total, item) => total + item.quantity, 0)})
+      </Link>
           
         </div>
       </header>
