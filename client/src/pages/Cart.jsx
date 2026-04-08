@@ -410,7 +410,7 @@ const Cart = () => {
                 return;
                 }
 
-                alert('Checkout flow can continue here.');
+                navigate('/checkout');
             }}
             style={{
                 width: '100%',
