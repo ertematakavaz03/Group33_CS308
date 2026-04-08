@@ -12,17 +12,29 @@ const defaultCategories = [
 ];
 
 const Dashboard = () => {
-  const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
   const [activeCategory, setActiveCategory] = useState("All Categories");
   const [products, setProducts] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
+  const navigate = useNavigate();
+  const getCartKey = () => {
+    const savedUser = localStorage.getItem('user');
+    if (!savedUser) return 'guest_cart';
+
+    const user = JSON.parse(savedUser);
+    return `cart_user_${user.id}`;
+  };
+
+  const [cart, setCart] = useState(() => {
+    const savedCart = localStorage.getItem(getCartKey());
+    return savedCart ? JSON.parse(savedCart) : [];
+  });
 
   useEffect(() => {
     const fetchProducts = async () => {
       try {
-        const response = await fetch('http://localhost:5000/api/products');
+        const response = await fetch('http://localhost:5001/api/products');
         if (!response.ok) {
           throw new Error('Failed to fetch products');
         }
@@ -38,12 +50,44 @@ const Dashboard = () => {
 
     fetchProducts();
   }, []);
+  useEffect(() => {
+    localStorage.setItem(getCartKey(), JSON.stringify(cart));
+  }, [cart]);
+  useEffect(() => {
+  const handleStorageChange = () => {
+    const savedCart = localStorage.getItem(getCartKey());
+    setCart(savedCart ? JSON.parse(savedCart) : []);
+  };
+
+  handleStorageChange();
+  window.addEventListener('storage', handleStorageChange);
+
+  return () => window.removeEventListener('storage', handleStorageChange);
+}, []);
 
   // Merge dynamic categories from DB with defaults
   const fetchedCategories = [...new Set(products.map(p => p.category).filter(Boolean))];
   const categories = fetchedCategories.length > 0 
     ? ["All Categories", ...fetchedCategories] 
     : defaultCategories;
+
+  const handleAddToCart = (product) => {
+    setCart((prevCart) => {
+      const existingItem = prevCart.find((item) => item.id === product.id);
+
+      if (existingItem) {
+        if (existingItem.quantity >= product.stock) return prevCart;
+
+        return prevCart.map((item) =>
+          item.id === product.id
+            ? { ...item, quantity: item.quantity + 1 }
+            : item
+        );
+      }
+
+      return [...prevCart, { ...product, quantity: 1 }];
+    });
+  };
 
   const filteredProducts = products.filter((product) => {
     const categoryMatches = activeCategory === "All Categories" || product.category === activeCategory;
@@ -59,6 +103,24 @@ const Dashboard = () => {
           Discover the <span style={{ color: 'var(--pazaryolu-red)' }}>Best Deals</span>
         </h1>
         <p style={{ color: 'var(--text-muted)', fontSize: '1.1rem' }}>Find everything you need right here in our marketplace.</p>
+      </div>
+      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '1rem' }}>
+        <button
+          type="button"
+          onClick={() => navigate('/cart')}
+          style={{
+            background: '#fff',
+            border: '1px solid #e5e7eb',
+            borderRadius: '14px',
+            padding: '0.85rem 1.2rem',
+            cursor: 'pointer',
+            fontWeight: '700',
+            color: 'var(--text-dark)',
+            boxShadow: '0 4px 12px rgba(0,0,0,0.04)'
+          }}
+        >
+          Cart ({cart.reduce((total, item) => total + item.quantity, 0)})
+        </button>
       </div>
 
       {/* Search Bar */}
@@ -139,7 +201,11 @@ const Dashboard = () => {
                        <span className="stock-badge ok">In Stock ({product.stock})</span>
                     )}
                   </div>
-                  <button className="add-to-cart-btn" disabled={product.stock <= 0}>
+                  <button
+                    className="add-to-cart-btn"
+                    disabled={product.stock <= 0}
+                    onClick={() => handleAddToCart(product)}
+                  >
                     {product.stock <= 0 ? 'Unavailable' : 'Add to Cart'}
                   </button>
                 </div>

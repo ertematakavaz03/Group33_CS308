@@ -4,6 +4,7 @@ import Login from './pages/Login';
 import Signup from './pages/Signup';
 import Profile from './pages/Profile';
 import Dashboard from './pages/Dashboard';
+import Cart from './pages/Cart';
 import './App.css';
 const Navigation = () => {
   const location = useLocation();
@@ -55,6 +56,7 @@ function AppContent() {
           <Route path="/signup" element={<Signup />} />
           <Route path="/profile" element={<Profile />} />
           <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/cart" element={<Cart />} />
         </Routes>
       </main>
     </div>
