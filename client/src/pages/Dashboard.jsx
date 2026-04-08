@@ -139,16 +139,16 @@ const handleSignOut = () => {
             className="nav-button nav-button-primary"
             style={{ textDecoration: 'none' }}
           >
-            {user.name}
+            Profile ({user?.user?.name || "User"})
           </Link>
 
-          <button
+          <Link
+            to ="/"
             onClick={handleSignOut}
             className="nav-button nav-button-primary"
-            style={{ border: 'none', fontFamily: 'inherit', cursor: 'pointer' }}
           >
             Sign Out
-          </button>
+          </Link>
         </>
       ) : (
         <>
