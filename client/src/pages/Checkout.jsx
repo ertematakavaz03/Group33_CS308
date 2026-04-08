@@ -3,6 +3,13 @@ import { useNavigate } from "react-router-dom";
 
 const Checkout = () => {
   const navigate = useNavigate();
+  const user = JSON.parse(localStorage.getItem("user") || "null");
+
+  const getCartKey = () => {
+    if (!user) return "guest_cart";
+    return `cart_user_${user.id}`;
+ };
+
   const [form, setForm] = useState({
     name: "",
     address: "",
@@ -65,6 +72,21 @@ const Checkout = () => {
         return;
     }
 
+    const [expMonth, expYear] = form.expiry.split("/");
+    const inputMonth = Number(expMonth);
+    const inputYear = Number("20" + expYear);
+
+    const today = new Date();
+    const currentMonth = today.getMonth() + 1;
+    const currentYear = today.getFullYear();
+
+    if (inputYear < currentYear || (inputYear === currentYear && inputMonth < currentMonth)) {
+        alert("Card expiry date cannot be in the past");
+        return;
+    }  
+
+    localStorage.removeItem(getCartKey());
+
     setSuccess(true);
 
     console.log(form);
@@ -72,16 +94,56 @@ const Checkout = () => {
 
 if (success) {
   return (
-    <div style={{ textAlign: "center", marginTop: "4rem" }}>
-      <h1>Payment Successful!</h1>
+    <div
+      style={{
+        maxWidth: "600px",
+        margin: "5rem auto",
+        background: "#fff",
+        padding: "3rem",
+        borderRadius: "20px",
+        textAlign: "center",
+        boxShadow: "0 10px 30px rgba(0,0,0,0.08)"
+      }}
+    >
+      <h1 style={{ marginBottom: "1rem" }}>Payment Successful</h1>
 
-      <button onClick={() => navigate("/")} style={{ margin: "1rem" }}>
-        Back to Home
-      </button>
+      <p style={{ marginBottom: "2rem", color: "#666" }}>
+        Your order has been placed successfully.
+      </p>
 
-      <button onClick={() => navigate("/orders")} style={{ margin: "1rem" }}>
-        Go to Orders
-      </button>
+      <div style={{ display: "flex", gap: "1rem", justifyContent: "center" }}>
+        
+        <button
+          onClick={() => navigate("/")}
+          style={{
+            padding: "0.9rem 1.5rem",
+            background: "var(--pazaryolu-red)",
+            color: "#fff",
+            border: "none",
+            borderRadius: "10px",
+            fontWeight: "700",
+            cursor: "pointer"
+          }}
+        >
+          Back to Home
+        </button>
+
+        <button
+          onClick={() => navigate("/orders")}
+          style={{
+            padding: "0.9rem 1.5rem",
+            background: "#f3f4f6",
+            color: "#111",
+            border: "none",
+            borderRadius: "10px",
+            fontWeight: "700",
+            cursor: "pointer"
+          }}
+        >
+          Go to Orders
+        </button>
+
+      </div>
     </div>
   );
 }
@@ -144,7 +206,8 @@ const inputStyle = {
   padding: "0.8rem",
   marginBottom: "1rem",
   borderRadius: "8px",
-  border: "1px solid #ccc"
+  border: "1px solid #ccc",
+  boxSizing: "border-box"
 };
 
 const buttonStyle = {

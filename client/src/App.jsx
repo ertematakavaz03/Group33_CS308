@@ -7,6 +7,7 @@ import Profile from './pages/Profile';
 import Dashboard from './pages/Dashboard'; // This is now your unified Main Page
 import Cart from './pages/Cart';
 import Checkout from './pages/Checkout';
+import Orders from "./pages/Orders";
 import './App.css';
 
 function App() {
@@ -25,6 +26,7 @@ function App() {
             <Route path="/profile" element={<Profile />} />
             <Route path="/cart" element={<Cart />} />
             <Route path="/checkout" element={<Checkout />} />
+            <Route path="/orders" element={<Orders />} />
             
             {/* You no longer need a separate '/dashboard' route */}
           </Routes>
