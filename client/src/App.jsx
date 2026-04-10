@@ -8,6 +8,7 @@ import Dashboard from './pages/Dashboard'; // This is now your unified Main Page
 import Cart from './pages/Cart';
 import Checkout from './pages/Checkout';
 import Orders from "./pages/Orders";
+import Footer from './components/Footer';
 import './App.css';
 
 function App() {
@@ -31,6 +32,7 @@ function App() {
             {/* You no longer need a separate '/dashboard' route */}
           </Routes>
         </main>
+        <Footer />
       </div>
     </Router>
   );

@@ -36,9 +36,24 @@ const Login = () => {
       setError('');
       console.log('Login successful:', data);
       
-      // --- ADD THIS LINE ---
       // Save the user data to localStorage so the Dashboard knows you are logged in
       localStorage.setItem('user', JSON.stringify(data)); 
+
+      // Sync guest cart to DB
+      const guestCart = localStorage.getItem('guest_cart');
+      if (guestCart) {
+        try {
+          const parsedCart = JSON.parse(guestCart);
+          if (parsedCart.length > 0) {
+            await fetch(`http://localhost:5001/api/cart/${data.user.id}/sync`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ cartItems: parsedCart })
+            });
+          }
+          localStorage.removeItem('guest_cart');
+        } catch (e) { console.error('Cart sync failed:', e); }
+      }
       
       navigate('/');
     } catch (err) {

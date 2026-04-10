@@ -52,6 +52,8 @@ useEffect(() => {
 const handleSignOut = () => {
   localStorage.removeItem('user');
   setUser(null);
+  const guestCart = localStorage.getItem('guest_cart');
+  setCart(guestCart ? JSON.parse(guestCart) : []);
   window.dispatchEvent(new Event('userChanged'));
   navigate('/');
 };
@@ -60,7 +62,8 @@ const handleSignOut = () => {
     const savedUser = localStorage.getItem('user');
     if (!savedUser) return 'guest_cart';
     const user = JSON.parse(savedUser);
-    return `cart_user_${user.id}`;
+    const userId = user?.user?.id || user?.id;
+    return `cart_user_${userId}`;
   };
 
   const [cart, setCart] = useState(() => {
@@ -86,6 +89,18 @@ const handleSignOut = () => {
   }, []);
 
   useEffect(() => {
+    const userId = user?.user?.id || user?.id;
+    if (userId) {
+      fetch(`http://localhost:5001/api/cart/${userId}`)
+        .then(res => res.json())
+        .then(data => {
+            if (Array.isArray(data)) setCart(data);
+        })
+        .catch(console.error);
+    }
+  }, [user]);
+
+  useEffect(() => {
     localStorage.setItem(getCartKey(), JSON.stringify(cart));
   }, [cart]);
 
@@ -108,7 +123,7 @@ const handleSignOut = () => {
         : defaultCategories.filter(c => c !== "All Categories"))
   ];
 
-  const handleAddToCart = (product) => {
+  const handleAddToCart = async (product) => {
     setCart((prevCart) => {
       const existingProduct = prevCart.find((item) => item.id === product.id);
       if (existingProduct) {
@@ -123,6 +138,19 @@ const handleSignOut = () => {
     });
     setCartAnimating(true);
     setTimeout(() => setCartAnimating(false), 300);
+
+    const userId = user?.user?.id || user?.id;
+    if (userId) {
+      try {
+        await fetch(`http://localhost:5001/api/cart/${userId}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ productId: product.id, quantity: 1 })
+        });
+      } catch (err) {
+        console.error('Error adding to DB cart:', err);
+      }
+    }
   };
 
   const topSellersIds = [...products]
@@ -315,7 +343,7 @@ const handleSignOut = () => {
               placeholder="Search for electronics, clothing, books..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              style={{ border: 'none', background: 'transparent', padding: '0', flex: 1, outline: 'none', fontSize: '1.1rem' }}
+              style={{ border: 'none', background: 'transparent', padding: '0 1rem', flex: 1, outline: 'none', fontSize: '1.1rem' }}
             />
             {searchTerm && (
               <button onClick={() => setSearchTerm('')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}>

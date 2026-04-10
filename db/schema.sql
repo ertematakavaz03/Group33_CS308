@@ -25,3 +25,11 @@ CREATE TABLE IF NOT EXISTS products (
     image_url TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+CREATE TABLE IF NOT EXISTS cart_items (
+    id SERIAL PRIMARY KEY,
+    user_id INT REFERENCES users(id) ON DELETE CASCADE,
+    product_id INT REFERENCES products(id) ON DELETE CASCADE,
+    quantity INT NOT NULL DEFAULT 1,
+    UNIQUE(user_id, product_id)
+);

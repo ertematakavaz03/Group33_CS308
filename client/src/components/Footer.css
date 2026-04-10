@@ -1,0 +1,71 @@
+.bottom-bar {
+  background-color: var(--pazaryolu-red);
+  border-top: 1px solid var(--border-color);
+  padding: 1.5rem 5%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: auto;
+  box-shadow: 0 -4px 15px rgba(0, 0, 0, 0.02);
+  position: relative;
+}
+
+.bottom-bar-left {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.bottom-bar-logo {
+  height: 45px;
+  width: auto;
+  object-fit: contain;
+}
+
+
+.go-top-button {
+  background-color: var(--white);
+  color: var(--pazaryolu-red);
+  border: none;
+  width: 48px;
+  height: 48px;
+  padding: 0;
+  border-radius: 14px;
+  cursor: pointer;
+  font-weight: 800;
+  font-size: 1.5rem;
+  transition: var(--transition);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+}
+
+.go-top-button:hover {
+  background-color: #ffffff;
+  color: var(--pazaryolu-red);
+  transform: translate(-50%, -4px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
+}
+
+@media (max-width: 600px) {
+  .bottom-bar {
+    flex-direction: column;
+    gap: 1.5rem;
+    text-align: center;
+    padding: 1.25rem 5%;
+  }
+  
+  .go-top-button {
+    position: static;
+    transform: none;
+  }
+  
+  .go-top-button:hover {
+    transform: translateY(-4px);
+  }
+}
