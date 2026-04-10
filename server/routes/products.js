@@ -12,4 +12,36 @@ router.get('/', async (req, res) => {
     }
 });
 
+// Checkout elements and reduce stock safely
+router.post('/checkout', async (req, res) => {
+    const { items } = req.body;
+    if (!Array.isArray(items) || items.length === 0) {
+        return res.status(400).json({ error: 'Cart is empty' });
+    }
+
+    try {
+        await req.db.query('BEGIN'); // Start transaction
+        
+        for (const item of items) {
+            // Subtract stock safely using SQL logic. Only proceeds if stock >= checkout amount.
+            const result = await req.db.query(
+                'UPDATE products SET stock = stock - $1 WHERE id = $2 AND stock >= $1 RETURNING id',
+                [item.quantity, item.id]
+            );
+            
+            if (result.rows.length === 0) {
+                await req.db.query('ROLLBACK');
+                return res.status(400).json({ error: `Not enough stock available for one or more items.` });
+            }
+        }
+        
+        await req.db.query('COMMIT');
+        res.json({ message: 'Checkout successful, stock reduced' });
+    } catch (err) {
+        await req.db.query('ROLLBACK');
+        console.error('Error during checkout:', err);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
 module.exports = router;

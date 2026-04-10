@@ -46,7 +46,7 @@ const Checkout = () => {
   });
 };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
 
     if (!form.name || !form.address || !form.cardNumber || !form.expiry || !form.cvv) {
@@ -84,18 +84,42 @@ const Checkout = () => {
     if (inputYear < currentYear || (inputYear === currentYear && inputMonth < currentMonth)) {
         alert("Card expiry date cannot be in the past");
         return;
-    }  
+    }
+    const cartKey = getCartKey();
+    const cartItems = JSON.parse(localStorage.getItem(cartKey) || "[]");
 
-    localStorage.removeItem(getCartKey());
-
-    const userId = user?.user?.id || user?.id;
-    if (userId) {
-        fetch(`http://localhost:5001/api/cart/${userId}`, { method: 'DELETE' }).catch(console.error);
+    if (cartItems.length === 0) {
+        alert("Your cart is empty!");
+        return;
     }
 
-    setSuccess(true);
+    try {
+        const response = await fetch('http://localhost:5001/api/products/checkout', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ items: cartItems })
+        });
+        
+        const data = await response.json();
+        if (!response.ok) {
+            alert(data.error || "Checkout failed due to stock limitations");
+            return;
+        }
 
-    console.log(form);
+        // Proceed to clear
+        localStorage.removeItem(cartKey);
+
+        const userId = user?.user?.id || user?.id;
+        if (userId) {
+            await fetch(`http://localhost:5001/api/cart/${userId}`, { method: 'DELETE' }).catch(console.error);
+        }
+
+        setSuccess(true);
+        console.log(form);
+    } catch (err) {
+        console.error(err);
+        alert("Network error. Please try again.");
+    }
   };
 
 if (success) {
