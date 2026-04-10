@@ -592,3 +592,28 @@ h1, h2, h3 {
   color: var(--text-muted);
   transform: none;
 }
+
+/* Top Seller Badge styles */
+.top-seller-badge {
+  position: absolute;
+  bottom: -5px;
+  left: -5px;
+  width: 65px;
+  height: auto;
+  z-index: 15;
+  filter: drop-shadow(0 4px 6px rgba(0,0,0,0.3));
+  transition: transform 0.3s ease;
+}
+
+.product-card.top-seller {
+  box-shadow: 0 0 0 2px #d4af37, var(--shadow-sm);
+}
+
+.product-card.top-seller:hover {
+  box-shadow: 0 0 0 2px #d4af37, var(--shadow-md);
+  transform: translateY(-8px);
+}
+
+.product-card.top-seller:hover .top-seller-badge {
+  transform: scale(1.1) rotate(-8deg);
+}

@@ -28,6 +28,21 @@ const Cart = () => {
     setCart(savedCart ? JSON.parse(savedCart) : []);
   }, []);
 
+  const [topSellersIds, setTopSellersIds] = useState([]);
+  useEffect(() => {
+    fetch('http://localhost:5001/api/products')
+      .then(r => r.json())
+      .then(data => {
+        const ids = [...data]
+          .sort((a, b) => (b.sales_count || 0) - (a.sales_count || 0))
+          .slice(0, 4)
+          .filter(p => (p.sales_count || 0) > 0)
+          .map(p => p.id);
+        setTopSellersIds(ids);
+      })
+      .catch(err => console.error("Error fetching top sellers:", err));
+  }, []);
+
   const handleIncrease = (id) => {
     setCart((prevCart) =>
       prevCart.map((item) =>
@@ -196,20 +211,41 @@ const Cart = () => {
                   alignItems: 'center'
                 }}
               >
-                <img
-                  src={
-                    item.image_url ||
-                    `https://via.placeholder.com/400x300?text=${encodeURIComponent(item.name)}`
-                  }
-                  alt={item.name}
-                  style={{
-                    width: '140px',
-                    height: '110px',
-                    objectFit: 'cover',
-                    borderRadius: '18px',
-                    background: '#f3f4f6'
-                  }}
-                />
+                <div style={{ position: 'relative', width: '140px', height: '110px' }}>
+                  {topSellersIds.includes(item.id) && (
+                    <img
+                      src="/top-sellers.png"
+                      alt=""
+                      style={{
+                        position: 'absolute',
+                        bottom: '4px',
+                        left: '4px',
+                        width: '45px',
+                        height: 'auto',
+                        zIndex: 15,
+                        filter: 'drop-shadow(0 4px 6px rgba(0,0,0,0.3))'
+                      }}
+                      onError={(e) => { e.target.style.display = 'none'; }}
+                    />
+                  )}
+                  <img
+                    src={
+                      item.image_url ||
+                      `https://via.placeholder.com/400x300?text=${encodeURIComponent(item.name)}`
+                    }
+                    alt={item.name}
+                    style={{
+                      width: '100%',
+                      height: '100%',
+                      objectFit: 'cover',
+                      borderRadius: '18px',
+                      background: '#f3f4f6',
+                      ...(topSellersIds.includes(item.id) ? {
+                        boxShadow: '0 0 0 2px #d4af37, 0 4px 15px rgba(212, 175, 55, 0.2)'
+                      } : {})
+                    }}
+                  />
+                </div>
 
                 <div>
                   <div

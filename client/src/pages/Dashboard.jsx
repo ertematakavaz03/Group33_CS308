@@ -17,7 +17,16 @@ const Dashboard = () => {
   const [products, setProducts] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [currentSlide, setCurrentSlide] = useState(0);
+  const [cartAnimating, setCartAnimating] = useState(false);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentSlide((prev) => (prev === 0 ? 1 : 0));
+    }, 5000);
+    return () => clearInterval(timer);
+  }, []);
 
 const [user, setUser] = useState(() => {
   const savedUser = localStorage.getItem('user');
@@ -91,25 +100,42 @@ const handleSignOut = () => {
   }, []);
 
   const fetchedCategories = [...new Set(products.map(p => p.category).filter(Boolean))];
-  const categories = fetchedCategories.length > 0
-    ? ["All Categories", ...fetchedCategories]
-    : defaultCategories;
+  const categories = [
+    "All Categories", 
+    "Top Sellers", 
+    ...(fetchedCategories.length > 0 
+        ? fetchedCategories 
+        : defaultCategories.filter(c => c !== "All Categories"))
+  ];
 
   const handleAddToCart = (product) => {
     setCart((prevCart) => {
-      const existingItem = prevCart.find((item) => item.id === product.id);
-      if (existingItem) {
-        if (existingItem.quantity >= product.stock) return prevCart;
+      const existingProduct = prevCart.find((item) => item.id === product.id);
+      if (existingProduct) {
+        if (existingProduct.quantity >= product.stock) return prevCart;
         return prevCart.map((item) =>
-          item.id === product.id ? { ...item, quantity: item.quantity + 1 } : item
+          item.id === product.id
+            ? { ...item, quantity: item.quantity + 1 }
+            : item
         );
       }
       return [...prevCart, { ...product, quantity: 1 }];
     });
+    setCartAnimating(true);
+    setTimeout(() => setCartAnimating(false), 300);
   };
 
+  const topSellersIds = [...products]
+    .sort((a, b) => (b.sales_count || 0) - (a.sales_count || 0))
+    .slice(0, 4)
+    .filter(p => (p.sales_count || 0) > 0)
+    .map(p => p.id);
+
   const filteredProducts = products.filter((product) => {
-    const categoryMatches = activeCategory === "All Categories" || product.category === activeCategory;
+    const categoryMatches = 
+      activeCategory === "All Categories" ? true :
+      activeCategory === "Top Sellers" ? topSellersIds.includes(product.id) :
+      product.category === activeCategory;
     const nameMatches = product.name && product.name.toLowerCase().includes(searchTerm.toLowerCase());
     return categoryMatches && nameMatches;
   });
@@ -157,8 +183,33 @@ const handleSignOut = () => {
         </>
       )}
 
-      <Link to="/cart" className="nav-button nav-button-primary">
-        Cart ({cart.reduce((total, item) => total + item.quantity, 0)})
+      <Link to="/cart" style={{ display: 'flex', alignItems: 'flex-end', textDecoration: 'none', marginLeft: '5px' }} title="Go to Cart">
+        <img 
+          src="/cart-icon.png" 
+          alt="Cart" 
+          style={{ 
+            height: '42px', 
+            objectFit: 'contain', 
+            filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.15))', 
+            transition: 'transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
+            transform: cartAnimating ? 'scale(1.4) rotate(-10deg)' : 'scale(1)'
+          }} 
+          onMouseOver={(e) => { if (!cartAnimating) e.target.style.transform = 'scale(1.08)' }}
+          onMouseOut={(e) => { if (!cartAnimating) e.target.style.transform = 'scale(1)' }}
+          onError={(e) => { e.target.style.display = 'none'; }}
+        />
+        <span style={{ 
+            color: 'white', 
+            fontWeight: '800', 
+            fontSize: '1.25rem', 
+            marginLeft: '6px', 
+            marginBottom: '2px', 
+            textShadow: '0 2px 4px rgba(0,0,0,0.15)',
+            transition: 'color 0.3s',
+            color: cartAnimating ? '#ffd700' : 'white'
+          }}>
+          ({cart.reduce((total, item) => total + item.quantity, 0)})
+        </span>
       </Link>
           
         </div>
@@ -166,18 +217,79 @@ const handleSignOut = () => {
 
       <div className="container" style={{ maxWidth: '1400px', margin: '40px auto 0', padding: '0 40px' }}>
 
-        {/* --- HERO BANNER (Grey Background Removed) --- */}
-        <div className="hero-banner-v3" style={{ marginBottom: '3rem', width: '100%' }}>
-          <div className="hero-content-wrapper">
+        {/* --- HERO BANNER CAROUSEL --- */}
+        <div className="hero-banner-v3" style={{ marginBottom: '3rem', width: '100%', position: 'relative' }}>
+          <div className="hero-content-wrapper" style={{ position: 'relative', overflow: 'hidden', borderRadius: '8px' }}>
             
-            <div className="hero-card-featured">
-              <div className="hero-featured-text">
-                <img src="/logo.png" alt="PazarYolu Logo" className="hero-featured-logo" />
-                <p>The Most Trusted Online Marketplace</p>
+            <div 
+              style={{
+                display: 'flex',
+                transition: 'transform 0.5s ease-in-out',
+                transform: `translateX(-${currentSlide * 50}%)`,
+                width: '200%'
+              }}
+            >
+              {/* Slide 1: Original */}
+              <div className="hero-card-featured" style={{ width: '50%', flexShrink: 0, borderRadius: 0 }}>
+                <div className="hero-featured-text" style={{ alignItems: 'center', textAlign: 'center' }}>
+                  <img src="/logo.png" alt="PazarYolu Logo" className="hero-featured-logo" style={{ marginBottom: '0.5rem' }} />
+                  <div>
+                    <h2 style={{ fontSize: '2.5rem', fontWeight: '800', margin: 0, color: 'white' }}>
+                      Discover the <span style={{ background: 'linear-gradient(to right, #ffd700, #d4af37)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', display: 'inline-block' }}>Best Deals</span>
+                    </h2>
+                    <p style={{ fontSize: '1.2rem', marginTop: '0.5rem', color: 'white', fontWeight: '600', opacity: 0.9 }}>
+                      Find everything you need right here in our marketplace.
+                    </p>
+                  </div>
+                </div>
+                <div className="hero-mascot-container">
+                  <img src="/camel-mascot.png" alt="PazarYolu Mascot" className="hero-mascot" />
+                </div>
               </div>
-              <div className="hero-mascot-container">
-                <img src="/camel-mascot.png" alt="PazarYolu Mascot" className="hero-mascot" />
+
+              {/* Slide 2: Top Sellers */}
+              <div className="hero-card-featured" style={{ width: '50%', flexShrink: 0, borderRadius: 0, backgroundColor: 'var(--pazaryolu-red)' }}>
+                <div className="hero-featured-text" style={{ alignItems: 'center', textAlign: 'center' }}>
+                  <img src="/logo.png" alt="PazarYolu Logo" className="hero-featured-logo" style={{ marginBottom: '0.5rem' }} />
+                  <div>
+                    <h2 style={{ fontSize: '2.5rem', fontWeight: '800', margin: 0, color: 'white' }}>
+                      Shop From <span style={{ background: 'linear-gradient(to right, #ffd700, #d4af37)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', display: 'inline-block' }}>Top Sellers</span>
+                    </h2>
+                    <p style={{ fontSize: '1.2rem', marginTop: '0.5rem', color: 'white', fontWeight: '600', opacity: 0.9 }}>
+                      Discover our most selling products, carefully selected just for you.
+                    </p>
+                  </div>
+                  <button 
+                    onClick={() => { setActiveCategory("Top Sellers"); document.querySelector('.search-container').scrollIntoView({behavior: 'smooth'}); }}
+                    style={{ background: '#d4af37', color: '#1a1a1a', border: 'none', padding: '0.8rem 1.8rem', borderRadius: '8px', fontWeight: 'bold', margin: '1.5rem auto 0 auto', cursor: 'pointer', width: 'fit-content', fontSize: '1rem', boxShadow: '0 4px 10px rgba(0,0,0,0.2)' }}>
+                    View Top Sellers
+                  </button>
+                </div>
+                <div className="hero-mascot-container">
+                  <img 
+                    src="/top-sellers-mascot.png" 
+                    alt="Top Sellers Mascot" 
+                    className="hero-mascot" 
+                    onError={(e) => { 
+                      e.target.style.opacity = '0'; 
+                    }}
+                  />
+                </div>
               </div>
+            </div>
+
+            {/* Carousel Dots */}
+            <div style={{ position: 'absolute', bottom: '15px', left: '50%', transform: 'translateX(-50%)', display: 'flex', gap: '10px' }}>
+              <button 
+                onClick={() => setCurrentSlide(0)}
+                style={{ width: '12px', height: '12px', borderRadius: '50%', border: 'none', background: currentSlide === 0 ? 'white' : 'rgba(255,255,255,0.4)', cursor: 'pointer', padding: 0, transition: 'background 0.3s' }}
+                aria-label="Go to slide 1"
+              />
+              <button 
+                onClick={() => setCurrentSlide(1)}
+                style={{ width: '12px', height: '12px', borderRadius: '50%', border: 'none', background: currentSlide === 1 ? 'white' : 'rgba(255,255,255,0.4)', cursor: 'pointer', padding: 0, transition: 'background 0.3s' }}
+                aria-label="Go to slide 2"
+              />
             </div>
             
           </div>
@@ -185,12 +297,14 @@ const handleSignOut = () => {
 
         {/* --- DASHBOARD CONTENT BELOW HERO --- */}
         <div className="dashboard-content">
-          <div className="dashboard-header" style={{ marginBottom: '2rem', textAlign: 'center' }}>
-            <h1 style={{ fontSize: '2.5rem', fontWeight: '800', color: 'var(--text-dark)', marginBottom: '0.5rem' }}>
-              Discover the <span style={{ color: 'var(--pazaryolu-red)' }}>Best Deals</span>
-            </h1>
-            <p style={{ color: 'var(--text-muted)', fontSize: '1.1rem' }}>Find everything you need right here in our marketplace.</p>
+        {/* --- SECTION HEADER --- */}
+        {activeCategory !== "All Categories" && (
+          <div className="section-header" style={{ textAlign: 'center', marginBottom: '2.5rem' }}>
+            <h2 className="section-title" style={{ fontSize: '2.4rem', fontWeight: '800', color: '#1a1a1a', marginBottom: '0.8rem' }}>
+              {activeCategory}
+            </h2>
           </div>
+        )}
 
           {/* Search Bar */}
           <div className="search-container">
@@ -248,10 +362,19 @@ const handleSignOut = () => {
             <div className="product-grid">
               {filteredProducts.length > 0 ? (
                 filteredProducts.map((product) => (
-                  <div key={product.id} className="product-card fade-in">
+                  <div key={product.id} className={`product-card fade-in ${topSellersIds.includes(product.id) ? 'top-seller' : ''}`}>
                     <div className="image-container">
                       {product.category && (
                         <span className="category-badge">{product.category}</span>
+                      )}
+                      {topSellersIds.includes(product.id) && (
+                        <img 
+                          src="/top-sellers.png" 
+                          alt="" 
+                          className="top-seller-badge"
+                          style={{ position: 'absolute', bottom: '8px', left: '8px', width: '65px', height: 'auto', zIndex: 15, filter: 'drop-shadow(0 4px 6px rgba(0,0,0,0.3))' }}
+                          onError={(e) => { e.target.style.display = 'none'; }}
+                        />
                       )}
                       <img
                         src={product.image_url || `https://via.placeholder.com/400x300?text=${encodeURIComponent(product.name)}`}

@@ -19,3 +19,9 @@ dist-ssr
 *.sln
 *.sw?
 .env
+pg_data/
+pg_log.txt
+pw.txt
+setup_done.txt
+setup_db.ps1
+winget.txt
