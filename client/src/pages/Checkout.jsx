@@ -7,8 +7,9 @@ const Checkout = () => {
 
   const getCartKey = () => {
     if (!user) return "guest_cart";
-    return `cart_user_${user.id}`;
- };
+    const userId = user?.user?.id || user?.id;
+    return `cart_user_${userId}`;
+  };
 
   const [form, setForm] = useState({
     name: "",
@@ -86,6 +87,11 @@ const Checkout = () => {
     }  
 
     localStorage.removeItem(getCartKey());
+
+    const userId = user?.user?.id || user?.id;
+    if (userId) {
+        fetch(`http://localhost:5001/api/cart/${userId}`, { method: 'DELETE' }).catch(console.error);
+    }
 
     setSuccess(true);
 

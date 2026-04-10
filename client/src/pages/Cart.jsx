@@ -8,8 +8,9 @@ const Cart = () => {
     const savedUser = localStorage.getItem('user');
     if (!savedUser) return 'guest_cart';
 
-    const user = JSON.parse(savedUser);
-    return `cart_user_${user.id}`;
+    const parsed = JSON.parse(savedUser);
+    const userId = parsed?.user?.id || parsed?.id;
+    return `cart_user_${userId}`;
   };
 
   const user = JSON.parse(localStorage.getItem('user') || 'null');
@@ -26,6 +27,16 @@ const Cart = () => {
   useEffect(() => {
     const savedCart = localStorage.getItem(getCartKey());
     setCart(savedCart ? JSON.parse(savedCart) : []);
+
+    const userId = user?.user?.id || user?.id;
+    if (userId) {
+      fetch(`http://localhost:5001/api/cart/${userId}`)
+        .then(res => res.json())
+        .then(data => {
+            if (Array.isArray(data)) setCart(data);
+        })
+        .catch(console.error);
+    }
   }, []);
 
   const [topSellersIds, setTopSellersIds] = useState([]);
@@ -43,15 +54,32 @@ const Cart = () => {
       .catch(err => console.error("Error fetching top sellers:", err));
   }, []);
 
-  const handleIncrease = (id) => {
+  const handleIncrease = async (id) => {
+    const item = cart.find(i => i.id === id);
+    if (!item) return;
+
     setCart((prevCart) =>
       prevCart.map((item) =>
         item.id === id ? { ...item, quantity: item.quantity + 1 } : item
       )
     );
+
+    const userId = user?.user?.id || user?.id;
+    if (userId) {
+        try {
+            await fetch(`http://localhost:5001/api/cart/${userId}/item/${id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ quantity: item.quantity + 1 })
+            });
+        } catch (e) { console.error('Error updating remote cart', e); }
+    }
   };
 
-  const handleDecrease = (id) => {
+  const handleDecrease = async (id) => {
+    const item = cart.find(i => i.id === id);
+    if (!item) return;
+
     setCart((prevCart) =>
       prevCart
         .map((item) =>
@@ -59,14 +87,41 @@ const Cart = () => {
         )
         .filter((item) => item.quantity > 0)
     );
+
+    const userId = user?.user?.id || user?.id;
+    if (userId) {
+        try {
+            if (item.quantity - 1 <= 0) {
+               await fetch(`http://localhost:5001/api/cart/${userId}/item/${id}`, { method: 'DELETE' });
+            } else {
+               await fetch(`http://localhost:5001/api/cart/${userId}/item/${id}`, {
+                   method: 'PUT',
+                   headers: { 'Content-Type': 'application/json' },
+                   body: JSON.stringify({ quantity: item.quantity - 1 })
+               });
+            }
+        } catch (e) { console.error('Error lowering remote cart qty', e); }
+    }
   };
 
-  const handleRemove = (id) => {
+  const handleRemove = async (id) => {
     setCart((prevCart) => prevCart.filter((item) => item.id !== id));
+    const userId = user?.user?.id || user?.id;
+    if (userId) {
+        try {
+            await fetch(`http://localhost:5001/api/cart/${userId}/item/${id}`, { method: 'DELETE' });
+        } catch (e) { console.error('Error removing from remote cart', e); }
+    }
   };
 
-  const handleClearCart = () => {
+  const handleClearCart = async () => {
     setCart([]);
+    const userId = user?.user?.id || user?.id;
+    if (userId) {
+        try {
+            await fetch(`http://localhost:5001/api/cart/${userId}`, { method: 'DELETE' });
+        } catch (e) { console.error('Error clearing remote cart', e); }
+    }
   };
 
   const totalItems = useMemo(() => {
