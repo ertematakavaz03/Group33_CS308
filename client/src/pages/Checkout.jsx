@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 const Checkout = () => {
   const navigate = useNavigate();
   const user = JSON.parse(localStorage.getItem("user") || "null");
+  const currentUser = user?.user || user;
 
   const getCartKey = () => {
     if (!user) return "guest_cart";
@@ -105,6 +106,21 @@ const Checkout = () => {
             alert(data.error || "Checkout failed due to stock limitations");
             return;
         }
+        const totalAmount = cartItems.reduce((sum, item) => {
+          return sum + item.price * item.quantity;
+      }, 0);
+      
+      await fetch("http://localhost:5001/api/orders/checkout", {
+          method: "POST",
+          headers: {
+              "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+              userEmail: currentUser?.email,
+              items: cartItems,
+              totalAmount
+          })
+      });
 
         // Proceed to clear
         localStorage.removeItem(cartKey);
