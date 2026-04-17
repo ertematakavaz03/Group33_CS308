@@ -26,3 +26,8 @@ INSERT INTO products (name, model, serial_no, description, stock, price, warrant
 ('Wireless Keyboard', 'TypeEase K7', 'SN-EL-022', 'Slim wireless keyboard with long battery life.', 13, 50.00, '1 Year', 'TechAudio Inc', 'active', 'Electronics', 'https://images.unsplash.com/photo-1587829741301-dc798b83add3?w=500&q=80'),
 ('Blender', 'SmoothMix Pro', 'SN-HK-023', 'High-speed blender perfect for smoothies and soups.', 8, 70.00, '2 Years', 'HomeAppliances Co', 'active', 'Home & Kitchen', 'https://images.unsplash.com/photo-1570222094114-d054a817e56b?w=500&q=80')
 ON CONFLICT (serial_no) DO NOTHING;
+
+UPDATE products SET sales_count = 150 WHERE name ILIKE '%Wireless Noise-Canceling%';
+UPDATE products SET sales_count = 120 WHERE name ILIKE '%Men''s Running Shoes%';
+UPDATE products SET sales_count = 80 WHERE name ILIKE '%Bestselling Fiction Novel%';
+UPDATE products SET sales_count = 50 WHERE name ILIKE '%Smart LED Light Bulb%';
