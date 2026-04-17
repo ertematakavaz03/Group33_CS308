@@ -28,35 +28,37 @@ const Dashboard = () => {
     return () => clearInterval(timer);
   }, []);
 
-const [user, setUser] = useState(() => {
-  const savedUser = localStorage.getItem('user');
-  return savedUser ? JSON.parse(savedUser) : null;
-});
-
-useEffect(() => {
-  const syncUser = () => {
+  const [user, setUser] = useState(() => {
     const savedUser = localStorage.getItem('user');
-    setUser(savedUser ? JSON.parse(savedUser) : null);
+    return savedUser ? JSON.parse(savedUser) : null;
+  });
+
+  useEffect(() => {
+    const syncUser = () => {
+      const savedUser = localStorage.getItem('user');
+      setUser(savedUser ? JSON.parse(savedUser) : null);
+    };
+
+    syncUser();
+    window.addEventListener('storage', syncUser);
+    window.addEventListener('userChanged', syncUser);
+
+    return () => {
+      window.removeEventListener('storage', syncUser);
+      window.removeEventListener('userChanged', syncUser);
+    };
+  }, []);
+
+  const handleSignOut = (e) => {
+    if (e) e.preventDefault();
+    localStorage.removeItem('user');
+    setUser(null);
+    const guestCart = localStorage.getItem('guest_cart');
+    setCart(guestCart ? JSON.parse(guestCart) : []);
+    window.dispatchEvent(new Event('userChanged'));
+    // it solves the issue of not page refleshing after logout
+    window.location.href = '/';
   };
-
-  syncUser();
-  window.addEventListener('storage', syncUser);
-  window.addEventListener('userChanged', syncUser);
-
-  return () => {
-    window.removeEventListener('storage', syncUser);
-    window.removeEventListener('userChanged', syncUser);
-  };
-}, []);
-
-const handleSignOut = () => {
-  localStorage.removeItem('user');
-  setUser(null);
-  const guestCart = localStorage.getItem('guest_cart');
-  setCart(guestCart ? JSON.parse(guestCart) : []);
-  window.dispatchEvent(new Event('userChanged'));
-  navigate('/');
-};
 
   const getCartKey = () => {
     const savedUser = localStorage.getItem('user');
@@ -94,7 +96,7 @@ const handleSignOut = () => {
       fetch(`http://localhost:5001/api/cart/${userId}`)
         .then(res => res.json())
         .then(data => {
-            if (Array.isArray(data)) setCart(data);
+          if (Array.isArray(data)) setCart(data);
         })
         .catch(console.error);
     }
@@ -116,11 +118,11 @@ const handleSignOut = () => {
 
   const fetchedCategories = [...new Set(products.map(p => p.category).filter(Boolean))];
   const categories = [
-    "All Categories", 
-    "Top Sellers", 
-    ...(fetchedCategories.length > 0 
-        ? fetchedCategories 
-        : defaultCategories.filter(c => c !== "All Categories"))
+    "All Categories",
+    "Top Sellers",
+    ...(fetchedCategories.length > 0
+      ? fetchedCategories
+      : defaultCategories.filter(c => c !== "All Categories"))
   ];
 
   const handleAddToCart = async (product) => {
@@ -162,8 +164,8 @@ const handleSignOut = () => {
   const filteredProducts = products.filter((product) => {
     const categoryMatches =
       activeCategory === "All Categories" ? true :
-      activeCategory === "Top Sellers" ? topSellersIds.includes(product.id) :
-      product.category === activeCategory;
+        activeCategory === "Top Sellers" ? topSellersIds.includes(product.id) :
+          product.category === activeCategory;
 
     const term = searchTerm.toLowerCase();
 
@@ -178,76 +180,76 @@ const handleSignOut = () => {
 
   return (
     <div className="main-page-wrapper" style={{ animation: 'fadeIn 0.5s ease-in-out' }}>
-      
+
       {/* --- TOP NAVIGATION BAR --- */}
       <header className="navbar" style={{ backgroundColor: 'var(--pazaryolu-red)', borderBottom: 'none' }}>
-        
+
         <div className="navbar-logo-container">
           <Link to="/">
-            <img 
-              src="/logo.png" 
-              alt="PazarYolu Logo" 
-              className="navbar-logo" 
+            <img
+              src="/logo.png"
+              alt="PazarYolu Logo"
+              className="navbar-logo"
             />
           </Link>
         </div>
-        
+
         <div className="navbar-links" style={{ display: 'flex', gap: '15px', alignItems: 'center' }}>
-          
-      {user ? (
-        <>
-          <Link
-            to="/profile"
-            className="nav-button nav-button-primary"
-            style={{ textDecoration: 'none' }}
-          >
-            Profile ({user?.user?.name || "User"})
+
+          {user ? (
+            <>
+              <Link
+                to="/profile"
+                className="nav-button nav-button-primary"
+                style={{ textDecoration: 'none' }}
+              >
+                Profile ({user?.user?.name || "User"})
+              </Link>
+
+              <Link
+                to="/"
+                onClick={handleSignOut}
+                className="nav-button nav-button-primary"
+              >
+                Sign Out
+              </Link>
+            </>
+          ) : (
+            <>
+              <Link to="/login" className="nav-button nav-button-primary">Login</Link>
+              <Link to="/signup" className="nav-button nav-button-primary">Sign Up</Link>
+            </>
+          )}
+
+          <Link to="/cart" style={{ display: 'flex', alignItems: 'flex-end', textDecoration: 'none', marginLeft: '5px' }} title="Go to Cart">
+            <img
+              src="/cart-icon.png"
+              alt="Cart"
+              style={{
+                height: '42px',
+                objectFit: 'contain',
+                filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.15))',
+                transition: 'transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
+                transform: cartAnimating ? 'scale(1.4) rotate(-10deg)' : 'scale(1)'
+              }}
+              onMouseOver={(e) => { if (!cartAnimating) e.target.style.transform = 'scale(1.08)' }}
+              onMouseOut={(e) => { if (!cartAnimating) e.target.style.transform = 'scale(1)' }}
+              onError={(e) => { e.target.style.display = 'none'; }}
+            />
+            <span style={{
+              color: 'white',
+              fontWeight: '800',
+              fontSize: '1.25rem',
+              marginLeft: '6px',
+              marginBottom: '2px',
+              textShadow: '0 2px 4px rgba(0,0,0,0.15)',
+              transition: 'color 0.3s',
+              color: cartAnimating ? '#ffd700' : 'white'
+            }}>
+              ({cart.reduce((total, item) => total + item.quantity, 0)})
+            </span>
           </Link>
 
-          <Link
-            to ="/"
-            onClick={handleSignOut}
-            className="nav-button nav-button-primary"
-          >
-            Sign Out
-          </Link>
-        </>
-      ) : (
-        <>
-          <Link to="/login" className="nav-button nav-button-primary">Login</Link>
-          <Link to="/signup" className="nav-button nav-button-primary">Sign Up</Link>
-        </>
-      )}
-
-      <Link to="/cart" style={{ display: 'flex', alignItems: 'flex-end', textDecoration: 'none', marginLeft: '5px' }} title="Go to Cart">
-        <img 
-          src="/cart-icon.png" 
-          alt="Cart" 
-          style={{ 
-            height: '42px', 
-            objectFit: 'contain', 
-            filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.15))', 
-            transition: 'transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
-            transform: cartAnimating ? 'scale(1.4) rotate(-10deg)' : 'scale(1)'
-          }} 
-          onMouseOver={(e) => { if (!cartAnimating) e.target.style.transform = 'scale(1.08)' }}
-          onMouseOut={(e) => { if (!cartAnimating) e.target.style.transform = 'scale(1)' }}
-          onError={(e) => { e.target.style.display = 'none'; }}
-        />
-        <span style={{ 
-            color: 'white', 
-            fontWeight: '800', 
-            fontSize: '1.25rem', 
-            marginLeft: '6px', 
-            marginBottom: '2px', 
-            textShadow: '0 2px 4px rgba(0,0,0,0.15)',
-            transition: 'color 0.3s',
-            color: cartAnimating ? '#ffd700' : 'white'
-          }}>
-          ({cart.reduce((total, item) => total + item.quantity, 0)})
-        </span>
-      </Link>
-          
         </div>
       </header>
 
@@ -256,8 +258,8 @@ const handleSignOut = () => {
         {/* --- HERO BANNER CAROUSEL --- */}
         <div className="hero-banner-v3" style={{ marginBottom: '3rem', width: '100%', position: 'relative' }}>
           <div className="hero-content-wrapper" style={{ position: 'relative', overflow: 'hidden', borderRadius: '8px' }}>
-            
-            <div 
+
+            <div
               style={{
                 display: 'flex',
                 transition: 'transform 0.5s ease-in-out',
@@ -295,19 +297,19 @@ const handleSignOut = () => {
                       Discover our most selling products, carefully selected just for you.
                     </p>
                   </div>
-                  <button 
-                    onClick={() => { setActiveCategory("Top Sellers"); document.querySelector('.search-container').scrollIntoView({behavior: 'smooth'}); }}
+                  <button
+                    onClick={() => { setActiveCategory("Top Sellers"); document.querySelector('.search-container').scrollIntoView({ behavior: 'smooth' }); }}
                     style={{ background: '#d4af37', color: '#1a1a1a', border: 'none', padding: '0.8rem 1.8rem', borderRadius: '8px', fontWeight: 'bold', margin: '1.5rem auto 0 auto', cursor: 'pointer', width: 'fit-content', fontSize: '1rem', boxShadow: '0 4px 10px rgba(0,0,0,0.2)' }}>
                     View Top Sellers
                   </button>
                 </div>
                 <div className="hero-mascot-container">
-                  <img 
-                    src="/top-sellers-mascot.png" 
-                    alt="Top Sellers Mascot" 
-                    className="hero-mascot" 
-                    onError={(e) => { 
-                      e.target.style.opacity = '0'; 
+                  <img
+                    src="/top-sellers-mascot.png"
+                    alt="Top Sellers Mascot"
+                    className="hero-mascot"
+                    onError={(e) => {
+                      e.target.style.opacity = '0';
                     }}
                   />
                 </div>
@@ -316,31 +318,31 @@ const handleSignOut = () => {
 
             {/* Carousel Dots */}
             <div style={{ position: 'absolute', bottom: '15px', left: '50%', transform: 'translateX(-50%)', display: 'flex', gap: '10px' }}>
-              <button 
+              <button
                 onClick={() => setCurrentSlide(0)}
                 style={{ width: '12px', height: '12px', borderRadius: '50%', border: 'none', background: currentSlide === 0 ? 'white' : 'rgba(255,255,255,0.4)', cursor: 'pointer', padding: 0, transition: 'background 0.3s' }}
                 aria-label="Go to slide 1"
               />
-              <button 
+              <button
                 onClick={() => setCurrentSlide(1)}
                 style={{ width: '12px', height: '12px', borderRadius: '50%', border: 'none', background: currentSlide === 1 ? 'white' : 'rgba(255,255,255,0.4)', cursor: 'pointer', padding: 0, transition: 'background 0.3s' }}
                 aria-label="Go to slide 2"
               />
             </div>
-            
+
           </div>
         </div>
 
         {/* --- DASHBOARD CONTENT BELOW HERO --- */}
         <div className="dashboard-content">
-        {/* --- SECTION HEADER --- */}
-        {activeCategory !== "All Categories" && (
-          <div className="section-header" style={{ textAlign: 'center', marginBottom: '2.5rem' }}>
-            <h2 className="section-title" style={{ fontSize: '2.4rem', fontWeight: '800', color: '#1a1a1a', marginBottom: '0.8rem' }}>
-              {activeCategory}
-            </h2>
-          </div>
-        )}
+          {/* --- SECTION HEADER --- */}
+          {activeCategory !== "All Categories" && (
+            <div className="section-header" style={{ textAlign: 'center', marginBottom: '2.5rem' }}>
+              <h2 className="section-title" style={{ fontSize: '2.4rem', fontWeight: '800', color: '#1a1a1a', marginBottom: '0.8rem' }}>
+                {activeCategory}
+              </h2>
+            </div>
+          )}
 
           {/* Search Bar */}
           <div className="search-container">
@@ -404,9 +406,9 @@ const handleSignOut = () => {
                         <span className="category-badge">{product.category}</span>
                       )}
                       {topSellersIds.includes(product.id) && (
-                        <img 
-                          src="/top-sellers.png" 
-                          alt="" 
+                        <img
+                          src="/top-sellers.png"
+                          alt=""
                           className="top-seller-badge"
                           style={{ position: 'absolute', bottom: '8px', left: '8px', width: '65px', height: 'auto', zIndex: 15, filter: 'drop-shadow(0 4px 6px rgba(0,0,0,0.3))' }}
                           onError={(e) => { e.target.style.display = 'none'; }}
@@ -422,11 +424,11 @@ const handleSignOut = () => {
                       <div className="product-meta">
                         <span className="product-price">${parseFloat(product.price).toFixed(2)}</span>
                         {product.stock <= 0 ? (
-                           <span className="stock-badge out">Out of Stock</span>
+                          <span className="stock-badge out">Out of Stock</span>
                         ) : product.stock <= 5 ? (
-                           <span className="stock-badge low">Only {product.stock} Left!</span>
+                          <span className="stock-badge low">Only {product.stock} Left!</span>
                         ) : (
-                           <span className="stock-badge ok">In Stock ({product.stock})</span>
+                          <span className="stock-badge ok">In Stock ({product.stock})</span>
                         )}
                       </div>
                       <button
