@@ -160,12 +160,20 @@ const handleSignOut = () => {
     .map(p => p.id);
 
   const filteredProducts = products.filter((product) => {
-    const categoryMatches = 
+    const categoryMatches =
       activeCategory === "All Categories" ? true :
       activeCategory === "Top Sellers" ? topSellersIds.includes(product.id) :
       product.category === activeCategory;
-    const nameMatches = product.name && product.name.toLowerCase().includes(searchTerm.toLowerCase());
-    return categoryMatches && nameMatches;
+
+    const term = searchTerm.toLowerCase();
+
+    const nameMatches =
+      product.name && product.name.toLowerCase().includes(term);
+
+    const descriptionMatches =
+      product.description && product.description.toLowerCase().includes(term);
+
+    return categoryMatches && (nameMatches || descriptionMatches);
   });
 
   return (
@@ -390,7 +398,7 @@ const handleSignOut = () => {
             <div className="product-grid">
               {filteredProducts.length > 0 ? (
                 filteredProducts.map((product) => (
-                  <div key={product.id} className={`product-card fade-in ${topSellersIds.includes(product.id) ? 'top-seller' : ''}`}>
+                  <div key={product.id} className={`product-card fade-in ${topSellersIds.includes(product.id) ? 'top-seller' : ''}`} onClick={() => navigate(`/product/${product.id}`)} style={{ cursor: "pointer" }}>
                     <div className="image-container">
                       {product.category && (
                         <span className="category-badge">{product.category}</span>
@@ -424,7 +432,10 @@ const handleSignOut = () => {
                       <button
                         className="add-to-cart-btn"
                         disabled={product.stock <= 0}
-                        onClick={() => handleAddToCart(product)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleAddToCart(product);
+                        }}
                       >
                         {product.stock <= 0 ? 'Unavailable' : 'Add to Cart'}
                       </button>

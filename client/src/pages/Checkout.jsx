@@ -220,7 +220,29 @@ if (success) {
 }
 
   return (
-    <div style={{ maxWidth: "600px", margin: "2rem auto", background: "#fff", padding: "2rem", borderRadius: "20px", boxShadow: "0 10px 24px rgba(0,0,0,0.05)" }}>
+      <div style={{ maxWidth: "600px", margin: "2rem auto", background: "#fff", padding: "2rem", borderRadius: "20px", boxShadow: "0 10px 24px rgba(0,0,0,0.05)", position: "relative" }}>
+
+        <button
+          onClick={() => navigate("/cart")}
+          style={{
+            background: "none",
+            border: "none",
+            cursor: "pointer",
+            fontSize: "1rem",
+            color: "#111",
+            padding: 0,
+            display: "flex",
+            alignItems: "center",
+            gap: "6px",
+            fontWeight: "600",
+            position: "absolute",
+            top: "2rem",
+            left: "2rem"
+          }}
+        >
+          ← Back
+        </button>
+
       <h1 style={{ marginBottom: "1.5rem", fontWeight: "800", color: "var(--text-dark)" }}>Payment Details</h1>
 
       <form onSubmit={handleSubmit}>

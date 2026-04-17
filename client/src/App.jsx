@@ -10,6 +10,7 @@ import Checkout from './pages/Checkout';
 import Orders from "./pages/Orders";
 import Footer from './components/Footer';
 import './App.css';
+import ProductDetail from './pages/ProductDetail';
 
 function App() {
   return (
@@ -28,6 +29,7 @@ function App() {
             <Route path="/cart" element={<Cart />} />
             <Route path="/checkout" element={<Checkout />} />
             <Route path="/orders" element={<Orders />} />
+            <Route path="/product/:id" element={<ProductDetail />} />
             
             {/* You no longer need a separate '/dashboard' route */}
           </Routes>
