@@ -33,3 +33,15 @@ CREATE TABLE IF NOT EXISTS cart_items (
     quantity INT NOT NULL DEFAULT 1,
     UNIQUE(user_id, product_id)
 );
+
+CREATE TABLE IF NOT EXISTS addresses (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    title VARCHAR(100) NOT NULL,
+    full_address TEXT NOT NULL,
+    city VARCHAR(100),
+    district VARCHAR(100),
+    postal_code VARCHAR(20),
+    is_default BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);

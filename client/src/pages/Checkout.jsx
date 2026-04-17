@@ -1,10 +1,14 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 const Checkout = () => {
   const navigate = useNavigate();
   const user = JSON.parse(localStorage.getItem("user") || "null");
   const currentUser = user?.user || user;
+
+  const [savedAddresses, setSavedAddresses] = useState([]);
+  const [selectedAddress, setSelectedAddress] = useState("");
+  const [cardType, setCardType] = useState("");
 
   const getCartKey = () => {
     if (!user) return "guest_cart";
@@ -22,13 +26,34 @@ const Checkout = () => {
 
   const [success, setSuccess] = useState(false);
 
+  useEffect(() => {
+    const userId = user?.user?.id || user?.id;
+  
+    if (!userId) return;
+  
+    fetch(`http://localhost:5001/api/addresses/${userId}`)
+      .then((res) => res.json())
+      .then((data) => setSavedAddresses(data))
+      .catch(console.error);
+  }, []);
+
+  const detectCardType = (value) => {
+    const cleaned = value.replace(/\s/g, "");
+  
+    if (cleaned.startsWith("4")) return "visa";
+    if (cleaned.startsWith("5")) return "mastercard";
+  
+    return "";
+  };
+
   const handleChange = (e) => {
   let value = e.target.value;
 
   if (e.target.name === "cardNumber") {
     let raw = value.replace(/\D/g, "").slice(0, 16);
-
+  
     value = raw.replace(/(.{4})/g, "$1 ").trim();
+    setCardType(detectCardType(value));
   }
 
   if (e.target.name === "cvv") {
@@ -207,21 +232,82 @@ if (success) {
           style={inputStyle}
         />
 
-        <input
-          name="address"
-          placeholder="Address"
-          value={form.address}
-          onChange={handleChange}
-          style={inputStyle}
-        />
+        {savedAddresses.length > 0 && (
+  <select
+    value={selectedAddress}
+    onChange={(e) => {
+      setSelectedAddress(e.target.value);
+      setForm({
+        ...form,
+        address: e.target.value
+      });
+    }}
+    style={inputStyle}
+  >
+    <option value="">Select Saved Address</option>
+    {savedAddresses.map((item) => (
+      <option key={item.id} value={item.full_address}>
+        {item.title} - {item.full_address}
+      </option>
+    ))}
+  </select>
+)}
 
-        <input
-          name="cardNumber"
-          placeholder="Card Number"
-          value={form.cardNumber}
-          onChange={handleChange}
-          style={inputStyle}
-        />
+<input
+  name="address"
+  placeholder="Or Enter New Address"
+  value={form.address}
+  onChange={handleChange}
+  style={inputStyle}
+/>
+
+<div style={{ position: "relative", marginBottom: "1rem" }}>
+  <input
+    name="cardNumber"
+    placeholder="Card Number"
+    value={form.cardNumber}
+    onChange={handleChange}
+    style={{ ...inputStyle, marginBottom: 0, paddingRight: "70px" }}
+  />
+
+{cardType === "visa" && (
+  <img
+    src="https://upload.wikimedia.org/wikipedia/commons/thumb/5/5c/Visa_Inc._logo_%282021%E2%80%93present%29.svg/960px-Visa_Inc._logo_%282021%E2%80%93present%29.svg.png"
+    alt="Visa"
+    style={{
+      position: "absolute",
+      right: "12px",
+      top: "50%",
+      transform: "translateY(-50%)",
+      width: "42px",
+      height: "26px",
+      objectFit: "contain",
+      background: "#fff",
+      padding: "2px",
+      borderRadius: "4px"
+    }}
+  />
+)}
+
+  {cardType === "mastercard" && (
+    <img
+      src="https://assets.weforum.org/organization/image/pyHyiLnMaQXMa0TXz0PB17X110sq_ESvDuHREqKIKP0.jpg"
+      alt="Mastercard"
+      style={{
+        position: "absolute",
+        right: "12px",
+        top: "50%",
+        transform: "translateY(-50%)",
+        width: "48px",
+        height: "30px",
+        objectFit: "cover",
+        background: "#fff",
+        padding: "2px",
+        borderRadius: "4px"
+      }}
+    />
+  )}
+</div>
 
         <input
           name="expiry"
