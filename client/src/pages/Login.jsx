@@ -19,6 +19,13 @@ const Login = () => {
       return;
     }
 
+    // Admin kontrolü
+    if (formData.email === 'admin@pazaryolu.com' && formData.password === 'admin123') {
+      localStorage.setItem('adminToken', 'pazaryolu-admin-secret-token');
+      navigate('/admin/dashboard');
+      return;
+    }
+
     try {
       const response = await fetch('/api/auth/login', {
         method: 'POST',
@@ -36,7 +43,6 @@ const Login = () => {
       setError('');
       console.log('Login successful:', data);
       
-      // Save the user data to localStorage so the Dashboard knows you are logged in
       localStorage.setItem('user', JSON.stringify(data)); 
 
       // Sync guest cart to DB
