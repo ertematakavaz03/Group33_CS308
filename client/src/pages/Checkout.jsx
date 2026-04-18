@@ -27,6 +27,7 @@ const Checkout = () => {
     cvv: ""
   });
   const [success, setSuccess] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
 
   const getCartKey = () => {
     if (!user) return "guest_cart";
@@ -180,6 +181,8 @@ const Checkout = () => {
         return;
     }
 
+    setIsProcessing(true);
+
     try {
         const totalAmount = cartItems.reduce((sum, item) => {
           return sum + item.price * item.quantity;
@@ -200,6 +203,7 @@ const Checkout = () => {
 
         const data = await response.json();
         if (!response.ok) {
+            setIsProcessing(false);
             alert(data.error || "Checkout failed.");
             return;
         }
@@ -213,8 +217,10 @@ const Checkout = () => {
         }
 
         setSuccess(true);
+        setIsProcessing(false);
     } catch (err) {
         console.error(err);
+        setIsProcessing(false);
         alert("Network error. Please try again.");
     }
   };
@@ -247,6 +253,22 @@ const Checkout = () => {
       )}
     </div>
   );
+
+  if (isProcessing) {
+    return (
+      <div style={{ maxWidth: "600px", margin: "5rem auto", background: "#fff", padding: "3rem", borderRadius: "20px", textAlign: "center", boxShadow: "0 10px 30px rgba(0,0,0,0.08)", minHeight: "400px", display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center" }}>
+        <div style={{ width: "50px", height: "50px", border: "5px solid #f3f3f3", borderTop: "5px solid var(--pazaryolu-red)", borderRadius: "50%", animation: "spin 1s linear infinite", marginBottom: "2rem" }}></div>
+        <style>{`
+          @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+          }
+        `}</style>
+        <h2 style={{ marginBottom: "1rem", color: "var(--text-dark)" }}>Processing Order...</h2>
+        <p style={{ color: "#666" }}>Please do not close or refresh this page.</p>
+      </div>
+    );
+  }
 
   if (success) {
     return (
