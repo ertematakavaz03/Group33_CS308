@@ -181,23 +181,11 @@ const Checkout = () => {
     }
 
     try {
-        const response = await fetch('http://localhost:5001/api/products/checkout', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ items: cartItems })
-        });
-        
-        const data = await response.json();
-        if (!response.ok) {
-            alert(data.error || "Checkout failed due to stock limitations");
-            return;
-        }
-        
         const totalAmount = cartItems.reduce((sum, item) => {
           return sum + item.price * item.quantity;
         }, 0);
       
-        await fetch("http://localhost:5001/api/orders/checkout", {
+        const response = await fetch("http://localhost:5001/api/orders/checkout", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
@@ -209,6 +197,12 @@ const Checkout = () => {
                 billingAddressId: sameAsShipping ? shippingAddressId : billingAddressId
             })
         });
+
+        const data = await response.json();
+        if (!response.ok) {
+            alert(data.error || "Checkout failed.");
+            return;
+        }
 
         // Proceed to clear
         localStorage.removeItem(cartKey);
