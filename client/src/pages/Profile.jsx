@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 const Profile = () => {
+  const navigate = useNavigate();
   const [isApplying, setIsApplying] = useState(false);
   const user = JSON.parse(localStorage.getItem("user"));
   const currentUser = user?.user || user;
@@ -183,6 +185,46 @@ const Profile = () => {
           <p style={{ color: "#777", fontStyle: "italic", margin: 0 }}>No saved addresses found.</p>
         )}
       </div>
+    </div>
+
+    {/* Orders Section */}
+    <div
+      style={{
+        background: "#fff",
+        borderRadius: "20px",
+        padding: "2rem",
+        boxShadow: "0 10px 24px rgba(0,0,0,0.05)",
+        marginBottom: "2rem",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "space-between",
+      }}
+    >
+      <div>
+        <h3 style={{ margin: "0 0 0.4rem", fontSize: "1.5rem", color: "var(--text-dark)" }}>
+          My Orders
+        </h3>
+        <p style={{ margin: 0, color: "var(--text-muted)", fontSize: "0.9rem" }}>
+          View your full order history and track statuses.
+        </p>
+      </div>
+      <button
+        onClick={() => navigate("/orders")}
+        style={{
+          padding: "0.8rem 1.6rem",
+          background: "var(--pazaryolu-red)",
+          color: "#fff",
+          border: "none",
+          borderRadius: "12px",
+          fontWeight: "700",
+          fontSize: "0.9rem",
+          cursor: "pointer",
+          whiteSpace: "nowrap",
+          flexShrink: 0,
+        }}
+      >
+        View Orders →
+      </button>
     </div>
 
     <div

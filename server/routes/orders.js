@@ -53,11 +53,54 @@ router.post('/checkout', async (req, res) => {
   }
 });
 
+// customer: get own orders
+router.get('/my-orders/:userId', async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    const ordersResult = await req.db.query(
+      `SELECT o.id, o.total_amount, o.status, o.created_at,
+              a_ship.title      AS shipping_title,
+              a_ship.full_address AS shipping_address,
+              a_ship.city       AS shipping_city,
+              a_bill.title      AS billing_title,
+              a_bill.full_address AS billing_address,
+              a_bill.city       AS billing_city
+       FROM orders o
+       LEFT JOIN addresses a_ship ON o.shipping_address_id = a_ship.id
+       LEFT JOIN addresses a_bill ON o.billing_address_id  = a_bill.id
+       WHERE o.user_id = $1
+       ORDER BY o.created_at DESC`,
+      [userId]
+    );
+
+    const orders = ordersResult.rows;
+    for (const order of orders) {
+      const itemsResult = await req.db.query(
+        `SELECT oi.quantity, oi.price_at_purchase, p.name, p.image_url
+         FROM order_items oi
+         LEFT JOIN products p ON oi.product_id = p.id
+         WHERE oi.order_id = $1`,
+        [order.id]
+      );
+      order.items = itemsResult.rows;
+    }
+
+    res.status(200).json(orders);
+  } catch (error) {
+    console.error('Error fetching user orders:', error);
+    res.status(500).json({ error: 'Failed to fetch orders.' });
+  }
+});
+
 // admin: get all orders
 router.get('/', async (req, res) => {
   try {
     const result = await req.db.query(
-      `SELECT * FROM orders ORDER BY created_at DESC`
+      `SELECT o.*, u.email AS user_email, u.name AS user_name
+       FROM orders o
+       LEFT JOIN users u ON o.user_id = u.id
+       ORDER BY o.created_at DESC`
     );
 
     res.json(result.rows);
