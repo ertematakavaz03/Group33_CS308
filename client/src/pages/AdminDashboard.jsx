@@ -77,7 +77,7 @@ const AdminDashboard = () => {
     <div style={{ minHeight:"100vh", background:"#f3f4f6" }}>
       {/* Header */}
       <div style={{ background:"#b91c1c", padding:"1rem 2rem", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
-        <h1 style={{ color:"#fff", fontWeight:"800", fontSize:"1.4rem", margin:0 }}>🛒 PazarYolu Admin</h1>
+        <h1 style={{ color:"#fff", fontWeight:"800", fontSize:"1.4rem", margin:0 }}>PazarYolu Admin</h1>
         <button onClick={handleLogout} style={{ background:"rgba(255,255,255,0.2)", border:"none", color:"#fff", padding:"0.5rem 1.2rem", borderRadius:"8px", cursor:"pointer", fontWeight:"700" }}>Logout</button>
       </div>
 

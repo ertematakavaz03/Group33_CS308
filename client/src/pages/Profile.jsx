@@ -84,7 +84,7 @@ const Profile = () => {
         {/* ── My Orders ── */}
         <div style={{ ...s.card, display: "flex", alignItems: "center", justifyContent: "space-between", gap: "1rem" }}>
           <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
-            <div style={s.iconBox}>📦</div>
+            <div style={s.iconBox}></div>
             <div>
               <h3 style={{ margin: "0 0 4px", fontSize: "1.05rem", fontWeight: "700", color: "#111827" }}>My Orders</h3>
               <p style={{ margin: 0, color: "#6B7280", fontSize: "0.85rem" }}>Track and view your order history</p>
@@ -97,7 +97,7 @@ const Profile = () => {
         <div style={s.card}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.25rem" }}>
             <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
-              <div style={s.iconBox}>📍</div>
+              <div style={s.iconBox}></div>
               <h3 style={{ margin: 0, fontSize: "1.05rem", fontWeight: "700", color: "#111827" }}>Saved Addresses</h3>
             </div>
             <button
@@ -140,7 +140,7 @@ const Profile = () => {
           {/* Address List */}
           {savedAddresses.length === 0 && !isAddingAddress ? (
             <div style={{ textAlign: "center", padding: "2rem", color: "#9CA3AF" }}>
-              <div style={{ fontSize: "2rem", marginBottom: "0.5rem" }}>📭</div>
+              <div style={{ fontSize: "2rem", marginBottom: "0.5rem" }}></div>
               <p style={{ margin: 0, fontSize: "0.9rem" }}>No saved addresses yet</p>
             </div>
           ) : (
@@ -148,7 +148,7 @@ const Profile = () => {
               {savedAddresses.map(addr => (
                 <div key={addr.id} style={s.addressCard}>
                   <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.5rem" }}>
-                    <span style={{ fontSize: "1rem" }}>🏠</span>
+                    <span style={{ fontSize: "1rem" }}></span>
                     <span style={{ fontWeight: "700", color: "#111827", fontSize: "0.9rem" }}>{addr.title}</span>
                   </div>
                   <p style={{ margin: "0 0 4px", fontSize: "0.83rem", color: "#4B5563" }}>{addr.full_address}</p>
@@ -164,7 +164,7 @@ const Profile = () => {
         {/* ── Become a Shop Owner ── */}
         <div style={{ ...s.card, display: "flex", alignItems: "center", justifyContent: "space-between", gap: "1rem" }}>
           <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
-            <div style={s.iconBox}>🏪</div>
+            <div style={s.iconBox}></div>
             <div>
               <h3 style={{ margin: "0 0 4px", fontSize: "1.05rem", fontWeight: "700", color: "#111827" }}>Become a Shop Owner</h3>
               <p style={{ margin: 0, color: "#6B7280", fontSize: "0.85rem" }}>Apply to sell your products on PazarYolu</p>
@@ -175,7 +175,7 @@ const Profile = () => {
             disabled={isApplying}
             style={isApplying ? { ...s.primaryBtn, background: "#9CA3AF", cursor: "default" } : s.primaryBtn}
           >
-            {isApplying ? "Applied ✓" : "Apply Now"}
+            {isApplying ? "Applied" : "Apply Now"}
           </button>
         </div>
 

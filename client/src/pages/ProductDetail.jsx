@@ -144,7 +144,7 @@ const ProductDetail = () => {
               transition:"all 0.2s ease"
             }}
           >
-            {isOutOfStock ? "Unavailable" : added ? "✓ Added to Cart!" : "Add to Cart"}
+            {isOutOfStock ? "Unavailable" : added ? "Added to Cart!" : "Add to Cart"}
           </button>
         </div>
       </div>

@@ -72,7 +72,7 @@ const Orders = () => {
         {/* Error */}
         {error && (
           <div style={{ ...styles.centerBox, background: "#FEF2F2", borderRadius: "16px", padding: "2rem" }}>
-            <span style={{ fontSize: "2rem" }}>⚠️</span>
+            <span style={{ fontSize: "2rem" }}>!</span>
             <p style={{ color: "#EF4444", fontWeight: "600", marginTop: "0.5rem" }}>{error}</p>
           </div>
         )}
@@ -80,7 +80,7 @@ const Orders = () => {
         {/* Empty */}
         {!loading && !error && orders.length === 0 && (
           <div style={{ ...styles.centerBox, background: "#fff", borderRadius: "20px", padding: "4rem 2rem", boxShadow: "0 4px 24px rgba(0,0,0,0.06)" }}>
-            <div style={{ fontSize: "3.5rem", marginBottom: "1rem" }}>📦</div>
+            <div style={{ fontSize: "3.5rem", marginBottom: "1rem" }}></div>
             <h2 style={{ color: "#111827", fontWeight: "800", margin: "0 0 0.5rem" }}>
               No orders yet
             </h2>
@@ -147,7 +147,7 @@ const Orders = () => {
                         <div style={styles.itemImg}>
                           {item.image_url
                             ? <img src={item.image_url} alt={item.name} style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: "10px" }} />
-                            : <span style={{ fontSize: "1.5rem" }}>📦</span>
+                            : <span style={{ fontSize: "1.5rem" }}></span>
                           }
                         </div>
                         <div style={{ flex: 1 }}>
