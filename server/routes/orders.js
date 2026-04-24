@@ -2,82 +2,122 @@ const express = require('express');
 const router = express.Router();
 const sendOrderEmail = require('../utils/sendOrderEmail');
 
+// customer checkout
 router.post('/checkout', async (req, res) => {
   try {
-    const { userId, userEmail, items, totalAmount, shippingAddressId, billingAddressId } = req.body;
+    const {
+      userId,
+      customerName,
+      userEmail,
+      address,
+      items,
+      totalAmount
+    } = req.body;
 
-    await req.db.query('BEGIN'); // Start transaction
-
-    // 0. Decrease stock securely
-    for (const item of items) {
-      const productId = item.id || item.product_id;
-      const result = await req.db.query(
-        'UPDATE products SET stock = stock - $1 WHERE id = $2 AND stock >= $1 RETURNING id',
-        [item.quantity, productId]
-      );
-      
-      if (result.rows.length === 0) {
-        await req.db.query('ROLLBACK');
-        return res.status(400).json({ error: `Not enough stock available for one or more items.` });
-      }
-    }
-
-    // 1. Insert order into the database
     const orderResult = await req.db.query(
-      `INSERT INTO orders (user_id, total_amount, shipping_address_id, billing_address_id, status)
-       VALUES ($1, $2, $3, $4, 'pending') RETURNING id`,
-      [userId, totalAmount, shippingAddressId, billingAddressId]
+      `INSERT INTO orders (user_id, customer_name, customer_email, address, total_amount)
+       VALUES ($1, $2, $3, $4, $5)
+       RETURNING *`,
+      [userId || null, customerName, userEmail, address, totalAmount]
     );
-    const orderId = orderResult.rows[0].id;
 
-    // 2. Insert order items
+    const order = orderResult.rows[0];
+
     for (const item of items) {
       await req.db.query(
-        `INSERT INTO order_items (order_id, product_id, quantity, price_at_purchase)
-         VALUES ($1, $2, $3, $4)`,
-        [orderId, item.id || item.product_id, item.quantity, item.price]
+        `INSERT INTO order_items (order_id, product_id, product_name, quantity, price)
+         VALUES ($1, $2, $3, $4, $5)`,
+        [
+          order.id,
+          item.id || null,
+          item.name,
+          item.quantity,
+          item.price
+        ]
       );
     }
 
-    await req.db.query('COMMIT'); // Commit transaction
-
-    // 3. Fetch addresses to include in the email
-    let shippingAddress = null;
-    let billingAddress = null;
-
-    if (shippingAddressId) {
-      const shipResult = await req.db.query('SELECT * FROM addresses WHERE id = $1', [shippingAddressId]);
-      shippingAddress = shipResult.rows[0];
-    }
-    if (billingAddressId) {
-      const billResult = await req.db.query('SELECT * FROM addresses WHERE id = $1', [billingAddressId]);
-      billingAddress = billResult.rows[0];
-    }
-
-    const orderInfo = {
-      orderId,
+    await sendOrderEmail(userEmail, {
+      orderId: order.id,
       items,
-      totalAmount,
-      shippingAddress,
-      billingAddress
-    };
-
-    await sendOrderEmail(userEmail, orderInfo).catch(err => console.error("Email error:", err));
+      totalAmount
+    });
 
     res.status(200).json({
-      message: 'Order completed and email sent.',
-      orderId
+      message: 'Order completed successfully',
+      order
     });
   } catch (error) {
-    console.error(error);
-    try {
-        await req.db.query('ROLLBACK');
-    } catch (rbError) {
-        console.error('Rollback error:', rbError);
+    console.error('Order checkout error:', error);
+    res.status(500).json({ error: 'Checkout failed.' });
+  }
+});
+
+// admin: get all orders
+router.get('/', async (req, res) => {
+  try {
+    const result = await req.db.query(
+      `SELECT * FROM orders ORDER BY created_at DESC`
+    );
+
+    res.json(result.rows);
+  } catch (error) {
+    console.error('Error fetching orders:', error);
+    res.status(500).json({ error: 'Failed to fetch orders' });
+  }
+});
+
+// admin: get one order with items
+router.get('/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const orderResult = await req.db.query(
+      `SELECT * FROM orders WHERE id = $1`,
+      [id]
+    );
+
+    if (orderResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Order not found' });
     }
-    res.status(500).json({
-      error: 'Checkout failed.'
+
+    const itemsResult = await req.db.query(
+      `SELECT * FROM order_items WHERE order_id = $1`,
+      [id]
+    );
+
+    res.json({
+      order: orderResult.rows[0],
+      items: itemsResult.rows
     });
+  } catch (error) {
+    console.error('Error fetching order details:', error);
+    res.status(500).json({ error: 'Failed to fetch order details' });
+  }
+});
+
+// admin: update status
+router.put('/:id/status', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+
+    const result = await req.db.query(
+      `UPDATE orders
+       SET status = $1
+       WHERE id = $2
+       RETURNING *`,
+      [status, id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Order not found' });
+    }
+
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error('Error updating order status:', error);
+    res.status(500).json({ error: 'Failed to update order status' });
   }
 });
 

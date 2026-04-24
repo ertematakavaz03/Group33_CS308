@@ -20,8 +20,10 @@ const Login = () => {
     }
 
     // Admin kontrolü
+    // Admin login
     if (formData.email === 'admin@pazaryolu.com' && formData.password === 'admin123') {
       localStorage.setItem('adminToken', 'pazaryolu-admin-secret-token');
+      localStorage.removeItem('user');
       navigate('/admin/dashboard');
       return;
     }
@@ -137,5 +139,21 @@ const Login = () => {
     </div>
   );
 };
+
+<div style={{ marginTop: "1rem", textAlign: "center" }}>
+  <button
+    type="button"
+    onClick={() => navigate("/admin")}
+    style={{
+      background: "transparent",
+      border: "none",
+      color: "var(--pazaryolu-red)",
+      fontWeight: "700",
+      cursor: "pointer"
+    }}
+  >
+    Admin Login
+  </button>
+</div>
 
 export default Login;

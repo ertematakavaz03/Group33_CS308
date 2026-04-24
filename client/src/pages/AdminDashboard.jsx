@@ -22,7 +22,10 @@ const AdminDashboard = () => {
 
   const fetchAll = () => {
     fetch("http://localhost:5001/api/products").then(r => r.json()).then(setProducts);
-    fetch("http://localhost:5001/api/admin/orders", { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()).then(setOrders).catch(() => {});
+    fetch("http://localhost:5001/api/orders")
+      .then(r => r.json())
+      .then(setOrders)
+      .catch(console.error);
     fetch("http://localhost:5001/api/admin/users", { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()).then(setUsers).catch(() => {});
   };
 
@@ -49,6 +52,26 @@ const AdminDashboard = () => {
   };
 
   const openEdit = (p) => { setEditProduct(p); setForm({ name:p.name, model:p.model||"", serial_no:p.serial_no||"", description:p.description||"", stock:p.stock, price:p.price, warranty:p.warranty||"", distributor:p.distributor||"", category:p.category||"", image_url:p.image_url||"" }); setShowAddForm(true); };
+
+  const handleUpdateOrderStatus = async (orderId, newStatus) => {
+    try {
+      const res = await fetch(`http://localhost:5001/api/orders/${orderId}/status`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: newStatus })
+      });
+  
+      if (res.ok) {
+        setOrders((prev) =>
+          prev.map((order) =>
+            order.id === orderId ? { ...order, status: newStatus } : order
+          )
+        );
+      }
+    } catch (err) {
+      console.error("Status update failed:", err);
+    }
+  };
 
   return (
     <div style={{ minHeight:"100vh", background:"#f3f4f6" }}>
@@ -159,8 +182,25 @@ const AdminDashboard = () => {
                       <td style={{ padding:"0.7rem 1rem", fontWeight:"600" }}>{o.user_email || o.email || "-"}</td>
                       <td style={{ padding:"0.7rem 1rem", fontWeight:"700", color:"#b91c1c" }}>${parseFloat(o.total_amount||0).toFixed(2)}</td>
                       <td style={{ padding:"0.7rem 1rem" }}>
-                        <span style={{ background:"#dcfce7", color:"#16a34a", padding:"2px 10px", borderRadius:"20px", fontSize:"0.8rem", fontWeight:"700" }}>{o.status || "completed"}</span>
-                      </td>
+                      <select
+                        value={o.status || "Pending"}
+                        onChange={(e) => handleUpdateOrderStatus(o.id, e.target.value)}
+                        style={{
+                          padding: "0.35rem 0.6rem",
+                          borderRadius: "8px",
+                          border: "1px solid #e5e7eb",
+                          fontWeight: "700",
+                          color: "#111",
+                          background: "#f9fafb"
+                        }}
+                      >
+                        <option value="Pending">Pending</option>
+                        <option value="Preparing">Preparing</option>
+                        <option value="Shipped">Shipped</option>
+                        <option value="Delivered">Delivered</option>
+                        <option value="Cancelled">Cancelled</option>
+                      </select>
+                    </td>
                       <td style={{ padding:"0.7rem 1rem", color:"#6b7280" }}>{o.created_at ? new Date(o.created_at).toLocaleDateString() : "-"}</td>
                     </tr>
                   ))}
