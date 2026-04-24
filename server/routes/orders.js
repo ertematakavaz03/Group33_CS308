@@ -39,7 +39,32 @@ router.post('/checkout', async (req, res) => {
 
     await req.db.query('COMMIT');
 
-    await sendOrderEmail(userEmail, { orderId, items, totalAmount }).catch(err => console.error('Email error:', err));
+let shippingAddress = null;
+let billingAddress = null;
+
+if (shippingAddressId) {
+  const shipResult = await req.db.query(
+    'SELECT * FROM addresses WHERE id = $1',
+    [shippingAddressId]
+  );
+  shippingAddress = shipResult.rows[0];
+}
+
+if (billingAddressId) {
+  const billResult = await req.db.query(
+    'SELECT * FROM addresses WHERE id = $1',
+    [billingAddressId]
+  );
+  billingAddress = billResult.rows[0];
+}
+
+await sendOrderEmail(userEmail, {
+  orderId,
+  items,
+  totalAmount,
+  shippingAddress,
+  billingAddress
+}).catch(err => console.error('Email error:', err));
 
     res.status(200).json({ message: 'Order completed successfully', orderId });
   } catch (error) {
