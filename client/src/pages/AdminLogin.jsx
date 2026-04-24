@@ -24,7 +24,24 @@ const AdminLogin = () => {
   };
 
   return (
-    <div style={{ minHeight:"100vh", display:"flex", alignItems:"center", justifyContent:"center", background:"#f3f4f6" }}>
+    <div style={{ minHeight:"100vh", background:"#f3f4f6", position:"relative" }}>
+
+      {/* Back to Home */}
+      <div style={{ position:"absolute", top:"1.25rem", left:"1.5rem" }}>
+        <button
+          onClick={() => navigate("/")}
+          style={{
+            display:"inline-flex", alignItems:"center", gap:"6px",
+            background:"#fff", border:"1px solid #E5E7EB", borderRadius:"10px",
+            padding:"0.5rem 1rem", fontWeight:"600", fontSize:"0.85rem",
+            color:"#374151", cursor:"pointer", boxShadow:"0 1px 4px rgba(0,0,0,0.06)",
+          }}
+        >
+          ← Back to Home
+        </button>
+      </div>
+
+    <div style={{ display:"flex", alignItems:"center", justifyContent:"center", minHeight:"100vh" }}>
       <div style={{ background:"#fff", padding:"2.5rem", borderRadius:"20px", boxShadow:"0 10px 40px rgba(0,0,0,0.1)", width:"100%", maxWidth:"400px" }}>
         <h1 style={{ fontWeight:"800", fontSize:"1.8rem", marginBottom:"0.3rem" }}>Admin Panel</h1>
         <p style={{ color:"#6b7280", marginBottom:"2rem" }}>PazarYolu Manager Login</p>
@@ -48,6 +65,7 @@ const AdminLogin = () => {
           <button type="submit" style={btnStyle}>Login</button>
         </form>
       </div>
+    </div>
     </div>
   );
 };

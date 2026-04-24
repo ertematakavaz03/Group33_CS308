@@ -44,14 +44,33 @@ const Signup = () => {
       }
 
       setError('');
-      console.log('Signup successful:', data);
-      navigate('/login', { state: { successMessage: 'Signup successful! You can Login now.' } });
+      localStorage.setItem('user', JSON.stringify(data));
+      window.dispatchEvent(new Event('userChanged'));
+      navigate('/');
     } catch (err) {
       setError('Server Error. Please try again later.');
     }
   };
 
   return (
+    <div style={{ minHeight: "100vh", background: "#F3F4F6", position: "relative" }}>
+
+      {/* Back to Home — fixed top left */}
+      <div style={{ position: "absolute", top: "1.25rem", left: "1.5rem" }}>
+        <button
+          onClick={() => navigate('/')}
+          style={{
+            display: "inline-flex", alignItems: "center", gap: "6px",
+            background: "#fff", border: "1px solid #E5E7EB",
+            borderRadius: "10px", padding: "0.5rem 1rem",
+            fontWeight: "600", fontSize: "0.85rem", color: "#374151",
+            cursor: "pointer", boxShadow: "0 1px 4px rgba(0,0,0,0.06)",
+          }}
+        >
+          ← Back to Home
+        </button>
+      </div>
+
     <div className="auth-wrapper">
       <div className="auth-card">
         <h2 className="auth-title">PazarYolu</h2>
@@ -127,6 +146,7 @@ const Signup = () => {
           Already have an account? <Link to="/login" className="auth-footer-link">Log in here</Link>
         </div>
       </div>
+    </div>
     </div>
   );
 };

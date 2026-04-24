@@ -5,50 +5,46 @@ const sendOrderEmail = require('../utils/sendOrderEmail');
 // customer checkout
 router.post('/checkout', async (req, res) => {
   try {
-    const {
-      userId,
-      customerName,
-      userEmail,
-      address,
-      items,
-      totalAmount
-    } = req.body;
+    const { userId, userEmail, items, totalAmount, shippingAddressId, billingAddressId } = req.body;
+
+    await req.db.query('BEGIN');
+
+    // decrease stock
+    for (const item of items) {
+      const productId = item.id || item.product_id;
+      const result = await req.db.query(
+        'UPDATE products SET stock = stock - $1 WHERE id = $2 AND stock >= $1 RETURNING id',
+        [item.quantity, productId]
+      );
+      if (result.rows.length === 0) {
+        await req.db.query('ROLLBACK');
+        return res.status(400).json({ error: 'Not enough stock for one or more items.' });
+      }
+    }
 
     const orderResult = await req.db.query(
-      `INSERT INTO orders (user_id, customer_name, customer_email, address, total_amount)
-       VALUES ($1, $2, $3, $4, $5)
-       RETURNING *`,
-      [userId || null, customerName, userEmail, address, totalAmount]
+      `INSERT INTO orders (user_id, total_amount, shipping_address_id, billing_address_id, status)
+       VALUES ($1, $2, $3, $4, 'pending') RETURNING id`,
+      [userId, totalAmount, shippingAddressId, billingAddressId]
     );
-
-    const order = orderResult.rows[0];
+    const orderId = orderResult.rows[0].id;
 
     for (const item of items) {
       await req.db.query(
-        `INSERT INTO order_items (order_id, product_id, product_name, quantity, price)
-         VALUES ($1, $2, $3, $4, $5)`,
-        [
-          order.id,
-          item.id || null,
-          item.name,
-          item.quantity,
-          item.price
-        ]
+        `INSERT INTO order_items (order_id, product_id, quantity, price_at_purchase)
+         VALUES ($1, $2, $3, $4)`,
+        [orderId, item.id || item.product_id, item.quantity, item.price]
       );
     }
 
-    await sendOrderEmail(userEmail, {
-      orderId: order.id,
-      items,
-      totalAmount
-    });
+    await req.db.query('COMMIT');
 
-    res.status(200).json({
-      message: 'Order completed successfully',
-      order
-    });
+    await sendOrderEmail(userEmail, { orderId, items, totalAmount }).catch(err => console.error('Email error:', err));
+
+    res.status(200).json({ message: 'Order completed successfully', orderId });
   } catch (error) {
     console.error('Order checkout error:', error);
+    try { await req.db.query('ROLLBACK'); } catch (_) {}
     res.status(500).json({ error: 'Checkout failed.' });
   }
 });
