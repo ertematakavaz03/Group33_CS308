@@ -42,10 +42,14 @@ const Checkout = () => {
     fetch(`http://localhost:5001/api/addresses/${userId}`)
       .then((res) => res.json())
       .then((data) => {
-        setSavedAddresses(data);
-        if (data.length > 0) {
-           setShippingAddressId(data[0].id);
-           setBillingAddressId(data[0].id);
+        if (Array.isArray(data)) {
+          setSavedAddresses(data);
+          if (data.length > 0) {
+             setShippingAddressId(data[0].id);
+             setBillingAddressId(data[0].id);
+          }
+        } else {
+          console.error("Invalid addresses data:", data);
         }
       })
       .catch(console.error);
@@ -106,12 +110,12 @@ const Checkout = () => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          userId: currentUser.id,
-          userEmail: currentUser.email,
-          items: cartItems,
-          totalAmount,
-          shippingAddressId,
-          billingAddressId
+          user_id: currentUser.id,
+          title: newAddressForm.title,
+          full_address: newAddressForm.full_address,
+          city: newAddressForm.city,
+          district: newAddressForm.district,
+          postal_code: newAddressForm.postal_code
         })
       });
       const data = await response.json();
