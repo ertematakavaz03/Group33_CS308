@@ -7,6 +7,9 @@ const ProductDetail = () => {
   const [product, setProduct] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [added, setAdded] = useState(false);
+  const [reviews, setReviews] = useState([]);
+  const [reviewForm, setReviewForm] = useState({ rating: 5, comment: "" });
+  const [reviewStatus, setReviewStatus] = useState("");
 
   const user = JSON.parse(localStorage.getItem("user") || "null");
 
@@ -21,7 +24,37 @@ const ProductDetail = () => {
       .then((res) => res.json())
       .then((data) => { setProduct(data); setIsLoading(false); })
       .catch(() => setIsLoading(false));
+      
+    fetch(`http://localhost:5001/api/products/${id}/reviews`)
+      .then((res) => res.json())
+      .then((data) => setReviews(Array.isArray(data) ? data : []))
+      .catch(console.error);
   }, [id]);
+
+  const handleReviewSubmit = async (e) => {
+    e.preventDefault();
+    if (!user) {
+        setReviewStatus("You must be logged in to leave a review.");
+        return;
+    }
+    const userId = user?.user?.id || user?.id;
+    try {
+        const res = await fetch(`http://localhost:5001/api/products/${id}/reviews`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ user_id: userId, ...reviewForm })
+        });
+        const data = await res.json();
+        if (res.ok) {
+            setReviewStatus("Your review has been submitted and is waiting for approval.");
+            setReviewForm({ rating: 5, comment: "" });
+        } else {
+            setReviewStatus(data.error || "Failed to submit review.");
+        }
+    } catch (err) {
+        setReviewStatus("An error occurred. Please try again.");
+    }
+  };
 
   const handleAddToCart = async () => {
     if (!product || product.stock <= 0) return;
@@ -92,6 +125,10 @@ const ProductDetail = () => {
 
         <div style={{ display:"flex", flexDirection:"column", justifyContent:"center" }}>
           <h1 style={{ fontSize:"1.9rem", fontWeight:"800", color:"#111", marginBottom:"0.4rem", lineHeight:1.2 }}>{product.name}</h1>
+          <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "0.8rem" }}>
+             <span style={{ color: "#fbbf24", fontSize: "1.2rem", fontWeight: "800" }}>★ {reviews.length > 0 ? (reviews.reduce((a,b) => a+b.rating, 0) / reviews.length).toFixed(1) : "No ratings yet"}</span>
+             <span style={{ color: "#6b7280", fontSize: "0.85rem" }}>({reviews.length} reviews)</span>
+          </div>
           {product.model && <p style={{ fontSize:"0.9rem", color:"#6b7280", marginBottom:"0.8rem" }}>Model: <strong>{product.model}</strong></p>}
           <p style={{ fontSize:"2rem", fontWeight:"800", color:"#b91c1c", marginBottom:"1rem" }}>${parseFloat(product.price).toFixed(2)}</p>
 
@@ -146,6 +183,68 @@ const ProductDetail = () => {
           >
             {isOutOfStock ? "Unavailable" : added ? "Added to Cart!" : "Add to Cart"}
           </button>
+        </div>
+      </div>
+
+      {/* Reviews Section */}
+      <div style={{ marginTop: "3rem", background: "#fff", borderRadius: "20px", boxShadow: "0 10px 40px rgba(0,0,0,0.08)", padding: "2.5rem" }}>
+        <h2 style={{ fontSize: "1.5rem", fontWeight: "800", marginBottom: "1.5rem", borderBottom: "2px solid #f3f4f6", paddingBottom: "1rem" }}>Reviews & Ratings</h2>
+        
+        {/* Write a Review */}
+        <div style={{ marginBottom: "3rem", background: "#f9fafb", padding: "1.5rem", borderRadius: "12px" }}>
+            <h3 style={{ fontSize: "1.1rem", fontWeight: "700", marginBottom: "1rem" }}>Leave a Review</h3>
+            {user ? (
+                <form onSubmit={handleReviewSubmit}>
+                    <div style={{ marginBottom: "1rem" }}>
+                        <label style={{ display: "block", fontSize: "0.9rem", fontWeight: "600", marginBottom: "0.5rem" }}>Rating</label>
+                        <select 
+                            value={reviewForm.rating} 
+                            onChange={(e) => setReviewForm({...reviewForm, rating: Number(e.target.value)})}
+                            style={{ padding: "0.5rem", borderRadius: "8px", border: "1px solid #e5e7eb", background: "#fff", width: "100%", maxWidth: "200px" }}
+                        >
+                            <option value="5">★★★★★ (5/5)</option>
+                            <option value="4">★★★★☆ (4/5)</option>
+                            <option value="3">★★★☆☆ (3/5)</option>
+                            <option value="2">★★☆☆☆ (2/5)</option>
+                            <option value="1">★☆☆☆☆ (1/5)</option>
+                        </select>
+                    </div>
+                    <div style={{ marginBottom: "1rem" }}>
+                        <label style={{ display: "block", fontSize: "0.9rem", fontWeight: "600", marginBottom: "0.5rem" }}>Comment</label>
+                        <textarea 
+                            value={reviewForm.comment}
+                            onChange={(e) => setReviewForm({...reviewForm, comment: e.target.value})}
+                            rows="3"
+                            style={{ padding: "0.8rem", borderRadius: "8px", border: "1px solid #e5e7eb", width: "100%", boxSizing: "border-box", resize: "vertical" }}
+                            placeholder="Share your thoughts about this product..."
+                        />
+                    </div>
+                    {reviewStatus && <p style={{ fontSize: "0.9rem", color: reviewStatus.includes("error") || reviewStatus.includes("already") || reviewStatus.includes("Failed") ? "#dc2626" : "#16a34a", marginBottom: "1rem" }}>{reviewStatus}</p>}
+                    <button type="submit" style={{ background: "#111", color: "#fff", border: "none", padding: "0.7rem 1.5rem", borderRadius: "8px", fontWeight: "700", cursor: "pointer" }}>Submit Review</button>
+                </form>
+            ) : (
+                <p style={{ color: "#6b7280" }}>Please <a href="/login" style={{ color: "#b91c1c", fontWeight: "700", textDecoration: "none" }}>login</a> to leave a review.</p>
+            )}
+        </div>
+
+        {/* List of Reviews */}
+        <div>
+            {reviews.length === 0 ? (
+                <p style={{ color: "#6b7280", fontStyle: "italic" }}>No reviews yet. Be the first to review this product!</p>
+            ) : (
+                <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
+                    {reviews.map(r => (
+                        <div key={r.id} style={{ borderBottom: "1px solid #f3f4f6", paddingBottom: "1.5rem" }}>
+                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.5rem" }}>
+                                <span style={{ fontWeight: "700", color: "#111" }}>{r.user_name || "User"}</span>
+                                <span style={{ color: "#fbbf24", fontSize: "1.1rem" }}>{"★".repeat(r.rating)}{"☆".repeat(5-r.rating)}</span>
+                            </div>
+                            <span style={{ fontSize: "0.75rem", color: "#9ca3af", display: "block", marginBottom: "0.8rem" }}>{new Date(r.created_at).toLocaleDateString()}</span>
+                            <p style={{ fontSize: "0.95rem", color: "#374151", margin: 0, lineHeight: 1.5 }}>{r.comment}</p>
+                        </div>
+                    ))}
+                </div>
+            )}
         </div>
       </div>
     </div>

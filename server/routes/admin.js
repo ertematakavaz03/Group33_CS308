@@ -67,4 +67,33 @@ router.get('/users', auth, async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+// Reviews
+router.get('/reviews', auth, async (req, res) => {
+    try {
+        const result = await req.db.query(
+            `SELECT r.*, p.name as product_name, u.name as user_name 
+             FROM reviews r 
+             JOIN products p ON r.product_id = p.id 
+             JOIN users u ON r.user_id = u.id 
+             ORDER BY r.created_at DESC`
+        );
+        res.json(result.rows);
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+router.put('/reviews/:id/status', auth, async (req, res) => {
+    const { status } = req.body;
+    if (!['pending', 'approved', 'rejected'].includes(status)) {
+        return res.status(400).json({ error: 'Invalid status' });
+    }
+    try {
+        const result = await req.db.query(
+            'UPDATE reviews SET status = $1 WHERE id = $2 RETURNING *',
+            [status, req.params.id]
+        );
+        if (result.rows.length === 0) return res.status(404).json({ error: 'Review not found' });
+        res.json(result.rows[0]);
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 module.exports = router;

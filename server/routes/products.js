@@ -56,4 +56,47 @@ router.get('/:id', async (req, res) => {
   }
 });
 
+// Get reviews for a product (only approved ones)
+router.get('/:id/reviews', async (req, res) => {
+    const { id } = req.params;
+    try {
+        const result = await req.db.query(
+            `SELECT r.id, r.rating, r.comment, r.created_at, u.name as user_name 
+             FROM reviews r 
+             JOIN users u ON r.user_id = u.id 
+             WHERE r.product_id = $1 AND r.status = 'approved' 
+             ORDER BY r.created_at DESC`,
+            [id]
+        );
+        res.json(result.rows);
+    } catch (err) {
+        console.error('Error fetching reviews:', err);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+// Submit a new review
+router.post('/:id/reviews', async (req, res) => {
+    const { id } = req.params;
+    const { user_id, rating, comment } = req.body;
+    
+    if (!user_id || !rating || rating < 1 || rating > 5) {
+        return res.status(400).json({ error: 'Invalid review data' });
+    }
+
+    try {
+        const result = await req.db.query(
+            'INSERT INTO reviews (product_id, user_id, rating, comment, status) VALUES ($1, $2, $3, $4, $5) RETURNING *',
+            [id, user_id, rating, comment, 'pending']
+        );
+        res.status(201).json(result.rows[0]);
+    } catch (err) {
+        if (err.code === '23505') { // unique violation
+            return res.status(400).json({ error: 'You have already reviewed this product' });
+        }
+        console.error('Error adding review:', err);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
 module.exports = router;

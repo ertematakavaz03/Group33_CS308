@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
-const tabs = ["Products", "Orders", "Users"];
+const tabs = ["Products", "Orders", "Users", "Reviews"];
 
 const AdminDashboard = () => {
   const navigate = useNavigate();
@@ -9,6 +9,7 @@ const AdminDashboard = () => {
   const [products, setProducts] = useState([]);
   const [orders, setOrders] = useState([]);
   const [users, setUsers] = useState([]);
+  const [reviews, setReviews] = useState([]);
   const [showAddForm, setShowAddForm] = useState(false);
   const [editProduct, setEditProduct] = useState(null);
   const [form, setForm] = useState({ name:"", model:"", serial_no:"", description:"", stock:"", price:"", warranty:"", distributor:"", category:"", image_url:"" });
@@ -27,6 +28,7 @@ const AdminDashboard = () => {
       .then(setOrders)
       .catch(console.error);
     fetch("http://localhost:5001/api/admin/users", { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()).then(setUsers).catch(() => {});
+    fetch("http://localhost:5001/api/admin/reviews", { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()).then(setReviews).catch(() => {});
   };
 
   const handleLogout = () => { localStorage.removeItem("adminToken"); navigate("/admin"); };
@@ -70,6 +72,23 @@ const AdminDashboard = () => {
       }
     } catch (err) {
       console.error("Status update failed:", err);
+    }
+  };
+
+  const handleUpdateReviewStatus = async (reviewId, newStatus) => {
+    try {
+      const res = await fetch(`http://localhost:5001/api/admin/reviews/${reviewId}/status`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ status: newStatus })
+      });
+      if (res.ok) {
+        setReviews((prev) =>
+          prev.map((r) => r.id === reviewId ? { ...r, status: newStatus } : r)
+        );
+      }
+    } catch (err) {
+      console.error("Review status update failed:", err);
     }
   };
 
@@ -236,6 +255,56 @@ const AdminDashboard = () => {
                 </tbody>
               </table>
               {users.length === 0 && <p style={{ color:"#6b7280", textAlign:"center", padding:"2rem" }}>No users yet.</p>}
+            </div>
+          </>
+        )}
+
+        {/* REVIEWS TAB */}
+        {activeTab === "Reviews" && (
+          <>
+            <h2 style={{ marginTop:0, fontWeight:"800" }}>Reviews ({reviews.length})</h2>
+            <div style={{ overflowX:"auto" }}>
+              <table style={{ width:"100%", borderCollapse:"collapse", fontSize:"0.9rem" }}>
+                <thead>
+                  <tr style={{ borderBottom:"2px solid #f3f4f6" }}>
+                    {["Product","User","Rating","Comment","Date","Status","Action"].map(h => (
+                      <th key={h} style={{ textAlign:"left", padding:"0.7rem 1rem", color:"#6b7280", fontWeight:"700", fontSize:"0.8rem", textTransform:"uppercase" }}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {reviews.map(r => (
+                    <tr key={r.id} style={{ borderBottom:"1px solid #f3f4f6" }}>
+                      <td style={{ padding:"0.7rem 1rem", fontWeight:"600", maxWidth:"150px" }}>{r.product_name}</td>
+                      <td style={{ padding:"0.7rem 1rem" }}>{r.user_name}</td>
+                      <td style={{ padding:"0.7rem 1rem", color:"#fbbf24", fontWeight:"700" }}>{"★".repeat(r.rating)}{"☆".repeat(5-r.rating)}</td>
+                      <td style={{ padding:"0.7rem 1rem", maxWidth:"300px", color:"#374151" }}>{r.comment}</td>
+                      <td style={{ padding:"0.7rem 1rem", color:"#6b7280" }}>{new Date(r.created_at).toLocaleDateString()}</td>
+                      <td style={{ padding:"0.7rem 1rem" }}>
+                        <span style={{ 
+                            background: r.status === 'approved' ? "#dcfce7" : r.status === 'rejected' ? "#fee2e2" : "#fef3c7", 
+                            color: r.status === 'approved' ? "#16a34a" : r.status === 'rejected' ? "#dc2626" : "#d97706", 
+                            padding:"4px 10px", borderRadius:"20px", fontSize:"0.75rem", fontWeight:"700", textTransform: "capitalize"
+                        }}>
+                            {r.status}
+                        </span>
+                      </td>
+                      <td style={{ padding:"0.7rem 1rem" }}>
+                        {r.status === 'pending' && (
+                            <div style={{ display: "flex", gap: "0.5rem" }}>
+                                <button onClick={() => handleUpdateReviewStatus(r.id, 'approved')} style={{ background: "#dcfce7", color: "#16a34a", border: "none", padding: "0.4rem 0.8rem", borderRadius: "6px", cursor: "pointer", fontWeight: "700" }}>Approve</button>
+                                <button onClick={() => handleUpdateReviewStatus(r.id, 'rejected')} style={{ background: "#fee2e2", color: "#dc2626", border: "none", padding: "0.4rem 0.8rem", borderRadius: "6px", cursor: "pointer", fontWeight: "700" }}>Reject</button>
+                            </div>
+                        )}
+                        {r.status !== 'pending' && (
+                             <button onClick={() => handleUpdateReviewStatus(r.id, 'pending')} style={{ background: "#f3f4f6", color: "#374151", border: "none", padding: "0.4rem 0.8rem", borderRadius: "6px", cursor: "pointer", fontWeight: "700" }}>Reset</button>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              {reviews.length === 0 && <p style={{ color:"#6b7280", textAlign:"center", padding:"2rem" }}>No reviews to moderate.</p>}
             </div>
           </>
         )}

@@ -63,4 +63,15 @@ CREATE TABLE IF NOT EXISTS order_items (
     product_id INT REFERENCES products(id) ON DELETE SET NULL,
     quantity INT NOT NULL DEFAULT 1,
     price_at_purchase DECIMAL(10, 2) NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS reviews (
+    id SERIAL PRIMARY KEY,
+    product_id INT REFERENCES products(id) ON DELETE CASCADE,
+    user_id INT REFERENCES users(id) ON DELETE CASCADE,
+    rating INT CHECK (rating >= 1 AND rating <= 5) NOT NULL,
+    comment TEXT,
+    status VARCHAR(50) DEFAULT 'pending',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(user_id, product_id)
 );
