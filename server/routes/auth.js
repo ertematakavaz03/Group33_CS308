@@ -17,6 +17,23 @@ router.get('/users', async (req, res) => {
     }
 });
 
+// verify if user still exists
+router.get('/verify/:id', async (req, res) => {
+    try {
+        const result = await req.db.query(
+            'SELECT id FROM users WHERE id = $1',
+            [req.params.id]
+        );
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+        res.status(200).json({ valid: true });
+    } catch (err) {
+        console.error('Verify error:', err);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
 // sign in user things
 router.post('/register', async (req, res) => {
     const { name, email, phone, password } = req.body;

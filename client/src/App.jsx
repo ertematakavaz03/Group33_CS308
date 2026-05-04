@@ -1,3 +1,4 @@
+import React, { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 
 // Import your pages
@@ -15,6 +16,29 @@ import AdminLogin from './pages/AdminLogin';
 import AdminDashboard from './pages/AdminDashboard';
 
 function App() {
+  useEffect(() => {
+    const verifyUser = async () => {
+      const savedUser = localStorage.getItem('user');
+      if (savedUser) {
+        try {
+          const userObj = JSON.parse(savedUser);
+          const userId = userObj?.user?.id || userObj?.id;
+          if (userId) {
+            const res = await fetch(`http://localhost:5001/api/auth/verify/${userId}`);
+            if (!res.ok) {
+              // User doesn't exist anymore, clear localStorage
+              localStorage.removeItem('user');
+              window.dispatchEvent(new Event('userChanged'));
+            }
+          }
+        } catch (err) {
+          console.error('Error verifying user:', err);
+        }
+      }
+    };
+    verifyUser();
+  }, []);
+
   return (
     <Router>
       <div className="App">
