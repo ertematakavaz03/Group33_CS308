@@ -4,7 +4,17 @@ const router = express.Router();
 // Get all products
 router.get('/', async (req, res) => {
     try {
-        const { rows } = await req.db.query('SELECT * FROM products ORDER BY created_at DESC');
+        const { rows } = await req.db.query(`
+            SELECT p.*,
+                   COALESCE(ROUND(AVG(r.rating)::numeric, 1), 0) AS average_rating,
+                   COUNT(r.id)::int AS review_count
+            FROM products p
+            LEFT JOIN reviews r
+              ON r.product_id = p.id
+             AND r.status = 'approved'
+            GROUP BY p.id
+            ORDER BY p.created_at DESC
+        `);
         res.json(rows);
     } catch (err) {
         console.error('Error fetching products:', err);
@@ -56,15 +66,15 @@ router.get('/:id', async (req, res) => {
   }
 });
 
-// Get reviews for a product (only approved ones)
+// Get reviews for a product
 router.get('/:id/reviews', async (req, res) => {
     const { id } = req.params;
     try {
         const result = await req.db.query(
-            `SELECT r.id, r.rating, r.comment, r.created_at, u.name as user_name 
+            `SELECT r.id, r.rating, r.comment, r.status, r.created_at, u.name as user_name 
              FROM reviews r 
              JOIN users u ON r.user_id = u.id 
-             WHERE r.product_id = $1 AND r.status = 'approved' 
+             WHERE r.product_id = $1
              ORDER BY r.created_at DESC`,
             [id]
         );
@@ -86,7 +96,15 @@ router.post('/:id/reviews', async (req, res) => {
 
     try {
         const result = await req.db.query(
-            'INSERT INTO reviews (product_id, user_id, rating, comment, status) VALUES ($1, $2, $3, $4, $5) RETURNING *',
+            `WITH inserted AS (
+                INSERT INTO reviews (product_id, user_id, rating, comment, status)
+                VALUES ($1, $2, $3, $4, $5)
+                RETURNING *
+             )
+             SELECT inserted.id, inserted.product_id, inserted.user_id, inserted.rating,
+                    inserted.comment, inserted.status, inserted.created_at, users.name as user_name
+             FROM inserted
+             JOIN users ON users.id = inserted.user_id`,
             [id, user_id, rating, comment, 'pending']
         );
         res.status(201).json(result.rows[0]);

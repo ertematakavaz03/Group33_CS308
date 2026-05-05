@@ -46,12 +46,13 @@ const ProductDetail = () => {
         });
         const data = await res.json();
         if (res.ok) {
-            setReviewStatus("Your review has been submitted and is waiting for approval.");
+            setReviews((prev) => [data, ...prev.filter((r) => r.id !== data.id)]);
+            setReviewStatus("Your review has been submitted and is shown below.");
             setReviewForm({ rating: 5, comment: "" });
         } else {
             setReviewStatus(data.error || "Failed to submit review.");
         }
-    } catch (err) {
+    } catch {
         setReviewStatus("An error occurred. Please try again.");
     }
   };
@@ -236,7 +237,22 @@ const ProductDetail = () => {
                     {reviews.map(r => (
                         <div key={r.id} style={{ borderBottom: "1px solid #f3f4f6", paddingBottom: "1.5rem" }}>
                             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.5rem" }}>
-                                <span style={{ fontWeight: "700", color: "#111" }}>{r.user_name || "User"}</span>
+                                <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                                    <span style={{ fontWeight: "700", color: "#111" }}>{r.user_name || "User"}</span>
+                                    {r.status && r.status !== "approved" && (
+                                      <span style={{
+                                        background: r.status === "pending" ? "#fef3c7" : "#fee2e2",
+                                        color: r.status === "pending" ? "#d97706" : "#dc2626",
+                                        borderRadius: "999px",
+                                        padding: "2px 8px",
+                                        fontSize: "0.7rem",
+                                        fontWeight: "800",
+                                        textTransform: "capitalize"
+                                      }}>
+                                        {r.status}
+                                      </span>
+                                    )}
+                                </div>
                                 <span style={{ color: "#fbbf24", fontSize: "1.1rem" }}>{"★".repeat(r.rating)}{"☆".repeat(5-r.rating)}</span>
                             </div>
                             <span style={{ fontSize: "0.75rem", color: "#9ca3af", display: "block", marginBottom: "0.8rem" }}>{new Date(r.created_at).toLocaleDateString()}</span>

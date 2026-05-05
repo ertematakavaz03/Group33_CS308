@@ -31,3 +31,96 @@ UPDATE products SET sales_count = 150 WHERE name ILIKE '%Wireless Noise-Cancelin
 UPDATE products SET sales_count = 120 WHERE name ILIKE '%Men''s Running Shoes%';
 UPDATE products SET sales_count = 80 WHERE name ILIKE '%Bestselling Fiction Novel%';
 UPDATE products SET sales_count = 50 WHERE name ILIKE '%Smart LED Light Bulb%';
+
+INSERT INTO users (name, email, phone, password, role) VALUES
+('Ayse Demir', 'ayse.reviewer@example.com', '5551000001', '$2b$10$k1Ltj9KYJ30gqXA10N0EE.MH/d68tiNQ4Ac5NEnBEg.e5xcZd2.VG', 'customer'),
+('Mert Kaya', 'mert.reviewer@example.com', '5551000002', '$2b$10$k1Ltj9KYJ30gqXA10N0EE.MH/d68tiNQ4Ac5NEnBEg.e5xcZd2.VG', 'customer'),
+('Selin Aydin', 'selin.reviewer@example.com', '5551000003', '$2b$10$k1Ltj9KYJ30gqXA10N0EE.MH/d68tiNQ4Ac5NEnBEg.e5xcZd2.VG', 'customer'),
+('Can Yilmaz', 'can.reviewer@example.com', '5551000004', '$2b$10$k1Ltj9KYJ30gqXA10N0EE.MH/d68tiNQ4Ac5NEnBEg.e5xcZd2.VG', 'customer'),
+('Ece Arslan', 'ece.reviewer@example.com', '5551000005', '$2b$10$k1Ltj9KYJ30gqXA10N0EE.MH/d68tiNQ4Ac5NEnBEg.e5xcZd2.VG', 'customer'),
+('Deniz Sahin', 'deniz.reviewer@example.com', '5551000006', '$2b$10$k1Ltj9KYJ30gqXA10N0EE.MH/d68tiNQ4Ac5NEnBEg.e5xcZd2.VG', 'customer')
+ON CONFLICT (email) DO NOTHING;
+
+INSERT INTO reviews (product_id, user_id, rating, comment, status)
+SELECT p.id, u.id, 5, 'Battery life is great and the sound feels premium.', 'approved'
+FROM products p, users u
+WHERE p.serial_no = 'SN-EL-001' AND u.email = 'ayse.reviewer@example.com'
+ON CONFLICT (user_id, product_id) DO NOTHING;
+
+INSERT INTO reviews (product_id, user_id, rating, comment, status)
+SELECT p.id, u.id, 5, 'Noise cancellation works better than I expected.', 'approved'
+FROM products p, users u
+WHERE p.serial_no = 'SN-EL-001' AND u.email = 'mert.reviewer@example.com'
+ON CONFLICT (user_id, product_id) DO NOTHING;
+
+INSERT INTO reviews (product_id, user_id, rating, comment, status)
+SELECT p.id, u.id, 4, 'Comfortable for long use, very good overall.', 'approved'
+FROM products p, users u
+WHERE p.serial_no = 'SN-EL-001' AND u.email = 'selin.reviewer@example.com'
+ON CONFLICT (user_id, product_id) DO NOTHING;
+
+INSERT INTO reviews (product_id, user_id, rating, comment, status)
+SELECT p.id, u.id, 5, 'Lightweight and comfortable during runs.', 'approved'
+FROM products p, users u
+WHERE p.serial_no = 'SN-CL-002' AND u.email = 'can.reviewer@example.com'
+ON CONFLICT (user_id, product_id) DO NOTHING;
+
+INSERT INTO reviews (product_id, user_id, rating, comment, status)
+SELECT p.id, u.id, 4, 'Good grip and nice design for the price.', 'approved'
+FROM products p, users u
+WHERE p.serial_no = 'SN-CL-002' AND u.email = 'ece.reviewer@example.com'
+ON CONFLICT (user_id, product_id) DO NOTHING;
+
+INSERT INTO reviews (product_id, user_id, rating, comment, status)
+SELECT p.id, u.id, 5, 'Finished it in two days, the story is really engaging.', 'approved'
+FROM products p, users u
+WHERE p.serial_no = 'SN-BK-004' AND u.email = 'deniz.reviewer@example.com'
+ON CONFLICT (user_id, product_id) DO NOTHING;
+
+INSERT INTO reviews (product_id, user_id, rating, comment, status)
+SELECT p.id, u.id, 4, 'A solid mystery novel with a strong ending.', 'approved'
+FROM products p, users u
+WHERE p.serial_no = 'SN-BK-004' AND u.email = 'ayse.reviewer@example.com'
+ON CONFLICT (user_id, product_id) DO NOTHING;
+
+INSERT INTO reviews (product_id, user_id, rating, comment, status)
+SELECT p.id, u.id, 4, 'Easy setup and the colors look great in the room.', 'approved'
+FROM products p, users u
+WHERE p.serial_no = 'SN-HK-006' AND u.email = 'mert.reviewer@example.com'
+ON CONFLICT (user_id, product_id) DO NOTHING;
+
+INSERT INTO reviews (product_id, user_id, rating, comment, status)
+SELECT p.id, u.id, 5, 'Very bright and works smoothly with voice control.', 'approved'
+FROM products p, users u
+WHERE p.serial_no = 'SN-HK-006' AND u.email = 'selin.reviewer@example.com'
+ON CONFLICT (user_id, product_id) DO NOTHING;
+
+INSERT INTO reviews (product_id, user_id, rating, comment, status)
+SELECT p.id, u.id, 4, 'Compact speaker but the bass is surprisingly strong.', 'approved'
+FROM products p, users u
+WHERE p.serial_no = 'SN-EL-009' AND u.email = 'can.reviewer@example.com'
+ON CONFLICT (user_id, product_id) DO NOTHING;
+
+INSERT INTO reviews (product_id, user_id, rating, comment, status)
+SELECT p.id, u.id, 5, 'Great response time and comfortable for gaming.', 'approved'
+FROM products p, users u
+WHERE p.serial_no = 'SN-EL-010' AND u.email = 'ece.reviewer@example.com'
+ON CONFLICT (user_id, product_id) DO NOTHING;
+
+INSERT INTO reviews (product_id, user_id, rating, comment, status)
+SELECT p.id, u.id, 4, 'Good size for daily use and the fabric feels durable.', 'approved'
+FROM products p, users u
+WHERE p.serial_no = 'SN-CL-011' AND u.email = 'deniz.reviewer@example.com'
+ON CONFLICT (user_id, product_id) DO NOTHING;
+
+INSERT INTO reviews (product_id, user_id, rating, comment, status)
+SELECT p.id, u.id, 5, 'Cooks fries quickly and the basket is very easy to clean.', 'approved'
+FROM products p, users u
+WHERE p.serial_no = 'SN-HK-019' AND u.email = 'ayse.reviewer@example.com'
+ON CONFLICT (user_id, product_id) DO NOTHING;
+
+INSERT INTO reviews (product_id, user_id, rating, comment, status)
+SELECT p.id, u.id, 4, 'Good capacity for a small kitchen and food comes out crispy.', 'approved'
+FROM products p, users u
+WHERE p.serial_no = 'SN-HK-019' AND u.email = 'mert.reviewer@example.com'
+ON CONFLICT (user_id, product_id) DO NOTHING;

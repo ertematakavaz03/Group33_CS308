@@ -13,7 +13,7 @@ router.post('/checkout', async (req, res) => {
     for (const item of items) {
       const productId = item.id || item.product_id;
       const result = await req.db.query(
-        'UPDATE products SET stock = stock - $1 WHERE id = $2 AND stock >= $1 RETURNING id',
+        'UPDATE products SET stock = stock - $1, sales_count = sales_count + $1 WHERE id = $2 AND stock >= $1 RETURNING id',
         [item.quantity, productId]
       );
       if (result.rows.length === 0) {
@@ -24,7 +24,7 @@ router.post('/checkout', async (req, res) => {
 
     const orderResult = await req.db.query(
       `INSERT INTO orders (user_id, total_amount, shipping_address_id, billing_address_id, status)
-       VALUES ($1, $2, $3, $4, 'pending') RETURNING id`,
+       VALUES ($1, $2, $3, $4, 'processing') RETURNING id`,
       [userId, totalAmount, shippingAddressId, billingAddressId]
     );
     const orderId = orderResult.rows[0].id;
@@ -165,6 +165,11 @@ router.put('/:id/status', async (req, res) => {
   try {
     const { id } = req.params;
     const { status } = req.body;
+    const allowedStatuses = ['processing', 'in-transit', 'delivered', 'cancelled'];
+
+    if (!allowedStatuses.includes(status)) {
+      return res.status(400).json({ error: 'Invalid order status' });
+    }
 
     const result = await req.db.query(
       `UPDATE orders

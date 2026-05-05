@@ -5,6 +5,7 @@ const STATUS_CONFIG = {
   pending:    { label: "Pending",    bg: "#FFF8E1", color: "#F59E0B", dot: "#F59E0B" },
   preparing:  { label: "Preparing",  bg: "#EFF6FF", color: "#3B82F6", dot: "#3B82F6" },
   processing: { label: "Processing", bg: "#EFF6FF", color: "#3B82F6", dot: "#3B82F6" },
+  "in-transit": { label: "In-Transit", bg: "#F0FDF4", color: "#22C55E", dot: "#22C55E" },
   shipped:    { label: "Shipped",    bg: "#F0FDF4", color: "#22C55E", dot: "#22C55E" },
   delivered:  { label: "Delivered",  bg: "#ECFDF5", color: "#16A34A", dot: "#16A34A" },
   cancelled:  { label: "Cancelled",  bg: "#FEF2F2", color: "#EF4444", dot: "#EF4444" },
@@ -34,7 +35,7 @@ const Orders = () => {
       .then((r) => { if (!r.ok) throw new Error(); return r.json(); })
       .then((data) => { setOrders(data); setLoading(false); })
       .catch(() => { setError("Failed to load orders."); setLoading(false); });
-  }, [currentUser?.id]);
+  }, [currentUser?.id, navigate]);
 
   const toggle = (id) => setExpanded((prev) => (prev === id ? null : id));
 

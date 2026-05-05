@@ -47,7 +47,7 @@ const Signup = () => {
       localStorage.setItem('user', JSON.stringify(data));
       window.dispatchEvent(new Event('userChanged'));
       navigate('/');
-    } catch (err) {
+    } catch {
       setError('Server Error. Please try again later.');
     }
   };

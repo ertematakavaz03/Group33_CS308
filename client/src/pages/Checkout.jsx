@@ -53,7 +53,7 @@ const Checkout = () => {
         }
       })
       .catch(console.error);
-  }, []);
+  }, [currentUser?.id]);
 
   const detectCardType = (value) => {
     const cleaned = value.replace(/\s/g, "");

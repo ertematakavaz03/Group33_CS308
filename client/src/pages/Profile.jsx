@@ -43,7 +43,7 @@ const Profile = () => {
         setIsAddingAddress(false);
         setNewAddressForm({ title: "", full_address: "", city: "", district: "", postal_code: "" });
       } else { alert("Failed to save address"); }
-    } catch (e) { alert("Network error. Please try again."); }
+    } catch { alert("Network error. Please try again."); }
   };
 
   const initials = (currentUser?.name || "U").split(" ").map(w => w[0]).join("").toUpperCase().slice(0, 2);

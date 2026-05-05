@@ -59,7 +59,7 @@ const Login = () => {
       }
 
       navigate('/');
-    } catch (err) {
+    } catch {
       setError('Server Error. Please try again later.');
     }
   };

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 const tabs = ["Products", "Orders", "Users", "Reviews"];
@@ -16,12 +16,7 @@ const AdminDashboard = () => {
 
   const token = localStorage.getItem("adminToken");
 
-  useEffect(() => {
-    if (!token) { navigate("/admin"); return; }
-    fetchAll();
-  }, []);
-
-  const fetchAll = () => {
+  const fetchAll = useCallback(() => {
     fetch("http://localhost:5001/api/products").then(r => r.json()).then(setProducts);
     fetch("http://localhost:5001/api/orders")
       .then(r => r.json())
@@ -29,7 +24,12 @@ const AdminDashboard = () => {
       .catch(console.error);
     fetch("http://localhost:5001/api/admin/users", { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()).then(setUsers).catch(() => {});
     fetch("http://localhost:5001/api/admin/reviews", { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()).then(setReviews).catch(() => {});
-  };
+  }, [token]);
+
+  useEffect(() => {
+    if (!token) { navigate("/admin"); return; }
+    fetchAll();
+  }, [fetchAll, navigate, token]);
 
   const handleLogout = () => { localStorage.removeItem("adminToken"); navigate("/admin"); };
 
@@ -202,7 +202,7 @@ const AdminDashboard = () => {
                       <td style={{ padding:"0.7rem 1rem", fontWeight:"700", color:"#b91c1c" }}>${parseFloat(o.total_amount||0).toFixed(2)}</td>
                       <td style={{ padding:"0.7rem 1rem" }}>
                       <select
-                        value={o.status || "Pending"}
+                        value={(o.status || "processing").toLowerCase()}
                         onChange={(e) => handleUpdateOrderStatus(o.id, e.target.value)}
                         style={{
                           padding: "0.35rem 0.6rem",
@@ -213,11 +213,10 @@ const AdminDashboard = () => {
                           background: "#f9fafb"
                         }}
                       >
-                        <option value="Pending">Pending</option>
-                        <option value="Preparing">Preparing</option>
-                        <option value="Shipped">Shipped</option>
-                        <option value="Delivered">Delivered</option>
-                        <option value="Cancelled">Cancelled</option>
+                        <option value="processing">Processing</option>
+                        <option value="in-transit">In-Transit</option>
+                        <option value="delivered">Delivered</option>
+                        <option value="cancelled">Cancelled</option>
                       </select>
                     </td>
                       <td style={{ padding:"0.7rem 1rem", color:"#6b7280" }}>{o.created_at ? new Date(o.created_at).toLocaleDateString() : "-"}</td>

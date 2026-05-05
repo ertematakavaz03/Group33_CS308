@@ -14,6 +14,7 @@ const defaultCategories = [
 const Dashboard = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [activeCategory, setActiveCategory] = useState("All Categories");
+  const [sortOption, setSortOption] = useState("newest");
   const [products, setProducts] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -155,11 +156,57 @@ const Dashboard = () => {
     }
   };
 
+  const getPopularityScore = (product) => {
+    const rating = Number(product.average_rating || 0);
+    const reviewCount = Number(product.review_count || 0);
+    const salesCount = Number(product.sales_count || 0);
+
+    if (reviewCount === 0) return salesCount;
+    return (rating * 100) + (reviewCount * 10) + salesCount;
+  };
+
+  const compareByPopularity = (a, b) => {
+    const scoreDiff = getPopularityScore(b) - getPopularityScore(a);
+    if (scoreDiff !== 0) return scoreDiff;
+
+    const ratingDiff = Number(b.average_rating || 0) - Number(a.average_rating || 0);
+    if (ratingDiff !== 0) return ratingDiff;
+
+    const reviewDiff = Number(b.review_count || 0) - Number(a.review_count || 0);
+    if (reviewDiff !== 0) return reviewDiff;
+
+    return (a.name || "").localeCompare(b.name || "");
+  };
+
   const topSellersIds = [...products]
-    .sort((a, b) => (b.sales_count || 0) - (a.sales_count || 0))
-    .slice(0, 4)
-    .filter(p => (p.sales_count || 0) > 0)
+    .filter(p => getPopularityScore(p) > 0)
+    .sort(compareByPopularity)
+    .slice(0, 6)
     .map(p => p.id);
+
+  const renderRating = (product) => {
+    const rating = Number(product.average_rating || 0);
+    const reviewCount = Number(product.review_count || 0);
+    const roundedRating = Math.round(rating);
+
+    if (reviewCount === 0) {
+      return (
+        <div className="product-rating">
+          <span className="stars muted">★★★★★</span>
+          <span className="rating-text">No reviews yet</span>
+        </div>
+      );
+    }
+
+    return (
+      <div className="product-rating" aria-label={`${rating.toFixed(1)} out of 5 stars`}>
+        <span className="stars">
+          {"★".repeat(roundedRating)}{"☆".repeat(5 - roundedRating)}
+        </span>
+        <span className="rating-text">{rating.toFixed(1)} ({reviewCount})</span>
+      </div>
+    );
+  };
 
   const filteredProducts = products.filter((product) => {
     const categoryMatches =
@@ -176,6 +223,13 @@ const Dashboard = () => {
       product.description && product.description.toLowerCase().includes(term);
 
     return categoryMatches && (nameMatches || descriptionMatches);
+  });
+
+  const sortedProducts = [...filteredProducts].sort((a, b) => {
+    if (sortOption === "price-low") return Number(a.price) - Number(b.price);
+    if (sortOption === "price-high") return Number(b.price) - Number(a.price);
+    if (sortOption === "popularity" || activeCategory === "Top Sellers") return compareByPopularity(a, b);
+    return new Date(b.created_at || 0) - new Date(a.created_at || 0);
   });
 
   return (
@@ -237,7 +291,6 @@ const Dashboard = () => {
               onError={(e) => { e.target.style.display = 'none'; }}
             />
             <span style={{
-              color: 'white',
               fontWeight: '800',
               fontSize: '1.25rem',
               marginLeft: '6px',
@@ -380,9 +433,29 @@ const Dashboard = () => {
             <h2 className="section-title" style={{ margin: 0, fontSize: '1.4rem' }}>
               {activeCategory === "All Categories" ? "Featured Items" : activeCategory}
               <span style={{ fontSize: '0.9rem', color: 'var(--text-muted)', marginLeft: '1rem', fontWeight: '500' }}>
-                ({filteredProducts.length} results)
+                ({sortedProducts.length} results)
               </span>
             </h2>
+            <select
+              value={sortOption}
+              onChange={(e) => setSortOption(e.target.value)}
+              style={{
+                border: '1px solid #e5e7eb',
+                borderRadius: '8px',
+                padding: '0.65rem 0.9rem',
+                background: '#fff',
+                color: 'var(--text-dark)',
+                fontWeight: 700,
+                cursor: 'pointer',
+                minWidth: '180px'
+              }}
+              aria-label="Sort products"
+            >
+              <option value="newest">Newest</option>
+              <option value="price-low">Price: Low to High</option>
+              <option value="price-high">Price: High to Low</option>
+              <option value="popularity">Popularity</option>
+            </select>
           </div>
 
           {isLoading ? (
@@ -398,8 +471,8 @@ const Dashboard = () => {
             </div>
           ) : (
             <div className="product-grid">
-              {filteredProducts.length > 0 ? (
-                filteredProducts.map((product) => (
+              {sortedProducts.length > 0 ? (
+                sortedProducts.map((product) => (
                   <div key={product.id} className={`product-card fade-in ${topSellersIds.includes(product.id) ? 'top-seller' : ''}`} onClick={() => navigate(`/product/${product.id}`)} style={{ cursor: "pointer" }}>
                     <div className="image-container">
                       {product.category && (
@@ -421,6 +494,7 @@ const Dashboard = () => {
                     </div>
                     <div className="product-info">
                       <h3 className="product-title" title={product.name}>{product.name}</h3>
+                      {renderRating(product)}
                       <div className="product-meta">
                         <span className="product-price">${parseFloat(product.price).toFixed(2)}</span>
                         {product.stock <= 0 ? (

@@ -53,7 +53,7 @@ CREATE TABLE IF NOT EXISTS orders (
     total_amount DECIMAL(10, 2) NOT NULL,
     shipping_address_id INT REFERENCES addresses(id) ON DELETE SET NULL,
     billing_address_id INT REFERENCES addresses(id) ON DELETE SET NULL,
-    status VARCHAR(50) DEFAULT 'pending',
+    status VARCHAR(50) DEFAULT 'processing',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -74,4 +74,4 @@ CREATE TABLE IF NOT EXISTS reviews (
     status VARCHAR(50) DEFAULT 'pending',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     UNIQUE(user_id, product_id)
-);
+);

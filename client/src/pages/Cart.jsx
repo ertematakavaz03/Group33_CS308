@@ -25,9 +25,6 @@ const Cart = () => {
   }, [cart]);
     
   useEffect(() => {
-    const savedCart = localStorage.getItem(getCartKey());
-    setCart(savedCart ? JSON.parse(savedCart) : []);
-
     const userId = user?.user?.id || user?.id;
     if (userId) {
       fetch(`http://localhost:5001/api/cart/${userId}`)
@@ -37,7 +34,7 @@ const Cart = () => {
         })
         .catch(console.error);
     }
-  }, []);
+  }, [user?.id, user?.user?.id]);
 
   const [topSellersIds, setTopSellersIds] = useState([]);
   useEffect(() => {
