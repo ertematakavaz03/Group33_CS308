@@ -1,3 +1,4 @@
+import React, { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 
 // Import your pages
@@ -8,9 +9,38 @@ import Dashboard from './pages/Dashboard'; // This is now your unified Main Page
 import Cart from './pages/Cart';
 import Checkout from './pages/Checkout';
 import Orders from "./pages/Orders";
+import Footer from './components/Footer';
 import './App.css';
+import ProductDetail from './pages/ProductDetail';
+import AdminLogin from './pages/AdminLogin';
+import AdminDashboard from './pages/AdminDashboard';
+import MyReviews from './pages/MyReviews';
+import Addresses from './pages/Addresses';
 
 function App() {
+  useEffect(() => {
+    const verifyUser = async () => {
+      const savedUser = localStorage.getItem('user');
+      if (savedUser) {
+        try {
+          const userObj = JSON.parse(savedUser);
+          const userId = userObj?.user?.id || userObj?.id;
+          if (userId) {
+            const res = await fetch(`http://localhost:5001/api/auth/verify/${userId}`);
+            if (!res.ok) {
+              // User doesn't exist anymore, clear localStorage
+              localStorage.removeItem('user');
+              window.dispatchEvent(new Event('userChanged'));
+            }
+          }
+        } catch (err) {
+          console.error('Error verifying user:', err);
+        }
+      }
+    };
+    verifyUser();
+  }, []);
+
   return (
     <Router>
       <div className="App">
@@ -27,10 +57,16 @@ function App() {
             <Route path="/cart" element={<Cart />} />
             <Route path="/checkout" element={<Checkout />} />
             <Route path="/orders" element={<Orders />} />
+            <Route path="/product/:id" element={<ProductDetail />} />
+            <Route path="/admin" element={<AdminLogin />} />
+            <Route path="/admin/dashboard" element={<AdminDashboard />} />
+            <Route path="/my-reviews" element={<MyReviews />} />
+            <Route path="/addresses" element={<Addresses />} />
             
             {/* You no longer need a separate '/dashboard' route */}
           </Routes>
         </main>
+        <Footer />
       </div>
     </Router>
   );
