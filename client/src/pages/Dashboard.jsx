@@ -193,7 +193,7 @@ const Dashboard = () => {
       return (
         <div className="product-rating">
           <span className="stars muted">★★★★★</span>
-          <span className="rating-text">No reviews yet</span>
+          <span className="rating-text">No reviews</span>
         </div>
       );
     }
