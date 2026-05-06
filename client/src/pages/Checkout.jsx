@@ -28,6 +28,7 @@ const Checkout = () => {
   });
   const [success, setSuccess] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [invoiceData, setInvoiceData] = useState(null);
 
   const getCartKey = () => {
     if (!user) return "guest_cart";
@@ -224,6 +225,16 @@ const Checkout = () => {
             await fetch(`http://localhost:5001/api/cart/${userId}`, { method: 'DELETE' }).catch(console.error);
         }
 
+        const shippingAddr = savedAddresses.find(a => a.id === shippingAddressId);
+        setInvoiceData({
+            orderId: data.orderId,
+            date: new Date().toLocaleDateString("en-GB", { day: "2-digit", month: "long", year: "numeric" }),
+            items: cartItems,
+            totalAmount,
+            shippingAddress: shippingAddr,
+            customerName: currentUser?.name,
+            customerEmail: currentUser?.email,
+        });
         setSuccess(true);
         setIsProcessing(false);
     } catch (err) {
@@ -278,14 +289,109 @@ const Checkout = () => {
     );
   }
 
-  if (success) {
+  if (success && invoiceData) {
     return (
-      <div style={{ maxWidth: "600px", margin: "5rem auto", background: "#fff", padding: "3rem", borderRadius: "20px", textAlign: "center", boxShadow: "0 10px 30px rgba(0,0,0,0.08)" }}>
-        <h1 style={{ marginBottom: "1rem" }}>Payment Successful</h1>
-        <p style={{ marginBottom: "2rem", color: "#666" }}>Your order has been placed successfully.</p>
-        <div style={{ display: "flex", gap: "1rem", justifyContent: "center" }}>
-          <button onClick={() => navigate("/")} style={{ padding: "0.9rem 1.5rem", background: "var(--pazaryolu-red)", color: "#fff", border: "none", borderRadius: "10px", fontWeight: "700", cursor: "pointer" }}>Back to Home</button>
-          <button onClick={() => navigate("/orders")} style={{ padding: "0.9rem 1.5rem", background: "#f3f4f6", color: "#111", border: "none", borderRadius: "10px", fontWeight: "700", cursor: "pointer" }}>Go to Orders</button>
+      <div style={{ maxWidth: "680px", margin: "2rem auto", padding: "0 1rem" }}>
+        <style>{`
+          @media print {
+            .no-print { display: none !important; }
+            body { background: white; }
+          }
+          @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+          }
+        `}</style>
+
+        {/* Invoice Card */}
+        <div id="invoice-content" style={{ background: "#fff", borderRadius: "20px", boxShadow: "0 4px 24px rgba(0,0,0,0.08)", overflow: "hidden" }}>
+
+          {/* Header */}
+          <div style={{ background: "var(--pazaryolu-red)", padding: "2rem", color: "#fff" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+              <div>
+                <h1 style={{ margin: 0, fontSize: "1.8rem", fontWeight: "800", letterSpacing: "-0.5px" }}>INVOICE</h1>
+                <p style={{ margin: "4px 0 0", opacity: 0.85, fontSize: "0.9rem" }}>PazarYolu Marketplace</p>
+              </div>
+              <div style={{ textAlign: "right" }}>
+                <div style={{ fontSize: "1.1rem", fontWeight: "700" }}>Order #{invoiceData.orderId}</div>
+                <div style={{ fontSize: "0.85rem", opacity: 0.85, marginTop: "4px" }}>{invoiceData.date}</div>
+              </div>
+            </div>
+          </div>
+
+          <div style={{ padding: "2rem" }}>
+
+            {/* Customer Info */}
+            <div style={{ marginBottom: "1.5rem", padding: "1rem", background: "#f8f9fa", borderRadius: "12px" }}>
+              <p style={{ margin: 0, fontWeight: "700", color: "#111", fontSize: "0.8rem", letterSpacing: "0.06em", marginBottom: "6px" }}>BILLED TO</p>
+              <p style={{ margin: 0, fontWeight: "600", color: "#111" }}>{invoiceData.customerName}</p>
+              <p style={{ margin: "2px 0 0", color: "#666", fontSize: "0.9rem" }}>{invoiceData.customerEmail}</p>
+            </div>
+
+            {/* Items Table */}
+            <p style={{ margin: "0 0 0.75rem", fontWeight: "700", color: "#111", fontSize: "0.8rem", letterSpacing: "0.06em" }}>ITEMS</p>
+            <div style={{ border: "1px solid #f0f0f0", borderRadius: "12px", overflow: "hidden", marginBottom: "1.5rem" }}>
+              {/* Table Header */}
+              <div style={{ display: "grid", gridTemplateColumns: "1fr auto auto", gap: "1rem", padding: "0.75rem 1rem", background: "#f8f9fa", fontSize: "0.78rem", fontWeight: "700", color: "#888", letterSpacing: "0.06em" }}>
+                <span>PRODUCT</span>
+                <span style={{ textAlign: "center" }}>QTY</span>
+                <span style={{ textAlign: "right" }}>PRICE</span>
+              </div>
+              {/* Items */}
+              {invoiceData.items.map((item, idx) => (
+                <div key={idx} style={{ display: "grid", gridTemplateColumns: "1fr auto auto", gap: "1rem", padding: "0.9rem 1rem", borderTop: "1px solid #f0f0f0", alignItems: "center" }}>
+                  <span style={{ fontWeight: "600", color: "#111", fontSize: "0.9rem" }}>{item.name}</span>
+                  <span style={{ textAlign: "center", color: "#666", fontSize: "0.9rem" }}>x{item.quantity}</span>
+                  <span style={{ textAlign: "right", fontWeight: "600", color: "#111", fontSize: "0.9rem" }}>${(item.price * item.quantity).toFixed(2)}</span>
+                </div>
+              ))}
+              {/* Total Row */}
+              <div style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: "1rem", padding: "1rem", borderTop: "2px solid #f0f0f0", background: "#fafafa" }}>
+                <span style={{ fontWeight: "800", color: "#111" }}>Total</span>
+                <span style={{ fontWeight: "800", color: "var(--pazaryolu-red)", fontSize: "1.1rem" }}>${Number(invoiceData.totalAmount).toFixed(2)}</span>
+              </div>
+            </div>
+
+            {/* Shipping Address */}
+            {invoiceData.shippingAddress && (
+              <div style={{ marginBottom: "2rem", padding: "1rem", background: "#f8f9fa", borderRadius: "12px" }}>
+                <p style={{ margin: "0 0 6px", fontWeight: "700", color: "#111", fontSize: "0.8rem", letterSpacing: "0.06em" }}>SHIPPING ADDRESS</p>
+                <p style={{ margin: 0, fontWeight: "600", color: "#111" }}>{invoiceData.shippingAddress.title}</p>
+                <p style={{ margin: "2px 0 0", color: "#666", fontSize: "0.9rem" }}>{invoiceData.shippingAddress.full_address}</p>
+                <p style={{ margin: "2px 0 0", color: "#666", fontSize: "0.9rem" }}>
+                  {[invoiceData.shippingAddress.district, invoiceData.shippingAddress.city, invoiceData.shippingAddress.postal_code].filter(Boolean).join(", ")}
+                </p>
+              </div>
+            )}
+
+            {/* Confirmation Note */}
+            <p style={{ textAlign: "center", color: "#16a34a", fontWeight: "600", fontSize: "0.9rem", marginBottom: "2rem" }}>
+              A copy of this invoice has been sent to {invoiceData.customerEmail}
+            </p>
+
+            {/* Action Buttons */}
+            <div className="no-print" style={{ display: "flex", gap: "1rem" }}>
+              <button
+                onClick={() => window.print()}
+                style={{ flex: 1, padding: "0.9rem", background: "var(--pazaryolu-red)", color: "#fff", border: "none", borderRadius: "10px", fontWeight: "700", fontSize: "0.95rem", cursor: "pointer" }}
+              >
+                Download PDF
+              </button>
+              <button
+                onClick={() => navigate("/orders")}
+                style={{ flex: 1, padding: "0.9rem", background: "#f3f4f6", color: "#111", border: "none", borderRadius: "10px", fontWeight: "700", fontSize: "0.95rem", cursor: "pointer" }}
+              >
+                My Orders
+              </button>
+              <button
+                onClick={() => navigate("/")}
+                style={{ flex: 1, padding: "0.9rem", background: "#f3f4f6", color: "#111", border: "none", borderRadius: "10px", fontWeight: "700", fontSize: "0.95rem", cursor: "pointer" }}
+              >
+                Back to Home
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     );
