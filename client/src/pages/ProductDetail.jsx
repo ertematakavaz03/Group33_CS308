@@ -126,7 +126,7 @@ const ProductDetail = () => {
 
         <div style={{ display:"flex", flexDirection:"column", justifyContent:"center" }}>
           <h1 style={{ fontSize:"1.9rem", fontWeight:"800", color:"#111", marginBottom:"0.4rem", lineHeight:1.2 }}>{product.name}</h1>
-          <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "0.8rem" }}>
+          <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: "10px", marginBottom: "0.8rem" }}>
              <span style={{ color: "#fbbf24", fontSize: "1.2rem", fontWeight: "800" }}>★ {reviews.length > 0 ? (reviews.reduce((a,b) => a+b.rating, 0) / reviews.length).toFixed(1) : "No ratings yet"}</span>
              <span style={{ color: "#6b7280", fontSize: "0.85rem" }}>({reviews.length} reviews)</span>
           </div>
