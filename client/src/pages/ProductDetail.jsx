@@ -101,6 +101,10 @@ const ProductDetail = () => {
 
   const isOutOfStock = product.stock <= 0;
   const isLowStock = product.stock > 0 && product.stock <= 5;
+  
+  const currentUserId = user?.user?.id || user?.id;
+  const visibleReviews = reviews.filter(r => r.status === 'approved' || r.user_id === currentUserId);
+  const approvedReviews = reviews.filter(r => r.status === 'approved');
 
   return (
     <div style={{ maxWidth:"1100px", margin:"2rem auto", padding:"0 2rem 4rem" }}>
@@ -127,8 +131,8 @@ const ProductDetail = () => {
         <div style={{ display:"flex", flexDirection:"column", justifyContent:"center" }}>
           <h1 style={{ fontSize:"1.9rem", fontWeight:"800", color:"#111", marginBottom:"0.4rem", lineHeight:1.2 }}>{product.name}</h1>
           <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: "10px", marginBottom: "0.8rem" }}>
-             <span style={{ color: "#fbbf24", fontSize: "1.2rem", fontWeight: "800" }}>★ {reviews.length > 0 ? (reviews.reduce((a,b) => a+b.rating, 0) / reviews.length).toFixed(1) : "No ratings yet"}</span>
-             <span style={{ color: "#6b7280", fontSize: "0.85rem" }}>({reviews.length} reviews)</span>
+             <span style={{ color: "#fbbf24", fontSize: "1.2rem", fontWeight: "800" }}>★ {approvedReviews.length > 0 ? (approvedReviews.reduce((a,b) => a+b.rating, 0) / approvedReviews.length).toFixed(1) : "No ratings yet"}</span>
+             <span style={{ color: "#6b7280", fontSize: "0.85rem" }}>({approvedReviews.length} reviews)</span>
           </div>
           {product.model && <p style={{ fontSize:"0.9rem", color:"#6b7280", marginBottom:"0.8rem" }}>Model: <strong>{product.model}</strong></p>}
           <p style={{ fontSize:"2rem", fontWeight:"800", color:"#b91c1c", marginBottom:"1rem" }}>${parseFloat(product.price).toFixed(2)}</p>
@@ -230,11 +234,11 @@ const ProductDetail = () => {
 
         {/* List of Reviews */}
         <div>
-            {reviews.length === 0 ? (
+            {visibleReviews.length === 0 ? (
                 <p style={{ color: "#6b7280", fontStyle: "italic" }}>No reviews yet. Be the first to review this product!</p>
             ) : (
                 <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
-                    {reviews.map(r => (
+                    {visibleReviews.map(r => (
                         <div key={r.id} style={{ borderBottom: "1px solid #f3f4f6", paddingBottom: "1.5rem" }}>
                             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.5rem" }}>
                                 <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
