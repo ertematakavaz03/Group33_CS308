@@ -76,5 +76,6 @@ CREATE TABLE IF NOT EXISTS reviews (
     comment TEXT,
     status VARCHAR(50) DEFAULT 'pending',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP,
     UNIQUE(user_id, product_id)
 );

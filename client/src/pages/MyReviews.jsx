@@ -2,6 +2,34 @@ import React, { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import Header from "../components/Header";
 
+const formatReviewDate = (value) =>
+  new Date(value).toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
+
+const getReviewDateLabel = (review) =>
+  review?.updated_at
+    ? `Updated on: ${formatReviewDate(review.updated_at)}`
+    : formatReviewDate(review?.created_at);
+
+const renderReviewStars = (rating) => (
+  <span className="my-review-stars" aria-label={`${rating} out of 5 stars`}>
+    {[1, 2, 3, 4, 5].map((star) => (
+      <span key={star} className={star <= rating ? "filled" : "empty"}>
+        {star <= rating ? "\u2605" : "\u2606"}
+      </span>
+    ))}
+  </span>
+);
+
+const getStatusLabel = (status) => {
+  if (status === "approved") return "Approved";
+  if (status === "rejected") return "Rejected";
+  return "Pending review";
+};
+
 const MyReviews = () => {
   const navigate = useNavigate();
   const [reviews, setReviews] = useState([]);
@@ -12,22 +40,23 @@ const MyReviews = () => {
   const currentUser = user?.user || user;
 
   useEffect(() => {
-    if (!currentUser?.id) { navigate("/login"); return; }
+    if (!currentUser?.id) {
+      navigate("/login");
+      return;
+    }
 
-    // Fetch user's reviews
     fetch(`http://localhost:5001/api/reviews/user/${currentUser.id}`)
-      .then(res => res.json())
-      .then(data => {
-        setReviews(data);
+      .then((res) => res.json())
+      .then((data) => {
+        setReviews(Array.isArray(data) ? data : []);
         setLoading(false);
       })
-      .catch(err => {
+      .catch((err) => {
         console.error("Error fetching reviews:", err);
         setLoading(false);
       });
 
-    // Get Cart Count
-    const cartKey = currentUser?.id ? `cart_user_${currentUser.id}` : 'guest_cart';
+    const cartKey = currentUser?.id ? `cart_user_${currentUser.id}` : "guest_cart";
     const savedCart = localStorage.getItem(cartKey);
     if (savedCart) {
       const cartItems = JSON.parse(savedCart);
@@ -40,10 +69,9 @@ const MyReviews = () => {
       <Header cartCount={cartCount} onSearchChange={(val) => navigate(`/?search=${val}`)} />
 
       <div className="account-portal-container">
-        {/* Sidebar Navigation */}
         <aside className="account-sidebar">
           <div className="sidebar-title">My Account</div>
-          
+
           <Link to="/profile" className="sidebar-menu-item">
             <svg className="sidebar-icon" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
             User Information
@@ -64,13 +92,20 @@ const MyReviews = () => {
             My Addresses
           </Link>
 
-          <div className="sidebar-menu-item" style={{ cursor: 'pointer', color: '#ef4444', marginTop: '10px' }} onClick={() => { localStorage.removeItem('user'); window.dispatchEvent(new Event('userChanged')); navigate('/'); }}>
+          <div
+            className="sidebar-menu-item"
+            style={{ cursor: "pointer", color: "#ef4444", marginTop: "10px" }}
+            onClick={() => {
+              localStorage.removeItem("user");
+              window.dispatchEvent(new Event("userChanged"));
+              navigate("/");
+            }}
+          >
             <svg className="sidebar-icon" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
             Sign Out
           </div>
         </aside>
 
-        {/* Main Content Area */}
         <main className="account-main-content">
           <div className="content-header">
             <h1>My Reviews</h1>
@@ -78,52 +113,60 @@ const MyReviews = () => {
           </div>
 
           {loading ? (
-            <div style={{ textAlign: 'center', padding: '50px' }}>
+            <div className="my-reviews-loading">
               <div className="spinner"></div>
-              <p style={{ marginTop: '15px', color: '#6b7280' }}>Loading your reviews...</p>
+              <p>Loading your reviews...</p>
             </div>
           ) : reviews.length === 0 ? (
             <div className="portal-empty-state">
               <h3>No reviews yet</h3>
               <p>You haven't reviewed any products yet. Share your experience with others!</p>
-              <button onClick={() => navigate("/")} style={styles.primaryBtn}>Explore Products</button>
+              <button onClick={() => navigate("/")} className="my-reviews-primary-btn">
+                Explore Products
+              </button>
             </div>
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+            <div className="my-reviews-list">
               {reviews.map((review) => (
-                <div key={review.id} style={styles.reviewCard}>
-                  <div style={{ display: 'flex', gap: '25px', alignItems: 'flex-start' }}>
-                    {/* Product Image */}
-                    <img 
-                      src={review.image_url || 'https://via.placeholder.com/100'} 
-                      alt={review.product_name} 
-                      style={styles.productImg} 
+                <article key={review.id} className="my-review-card">
+                  <div className="my-review-image-frame">
+                    <img
+                      src={review.image_url || "https://via.placeholder.com/100"}
+                      alt={review.product_name}
+                      className="my-review-image"
                     />
-                    
-                    <div style={{ flex: 1 }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                        <div>
-                          <h4 style={styles.productName}>{review.product_name}</h4>
-                          <div style={styles.ratingStars}>
-                            {"★".repeat(review.rating)}{"☆".repeat(5 - review.rating)}
-                            <span style={{ marginLeft: '10px', color: '#9ca3af', fontSize: '0.85rem' }}>
-                              {new Date(review.created_at).toLocaleDateString()}
-                            </span>
-                          </div>
+                  </div>
+
+                  <div className="my-review-content">
+                    <div className="my-review-header">
+                      <div className="my-review-summary">
+                        <h4 className="my-review-product-name">{review.product_name}</h4>
+                        <div className="my-review-meta">
+                          {renderReviewStars(review.rating)}
+                          <span className="my-review-date">{getReviewDateLabel(review)}</span>
                         </div>
-                        <span style={{ 
-                          ...styles.statusBadge, 
-                          backgroundColor: review.status === 'approved' ? '#dcfce7' : '#fef3c7',
-                          color: review.status === 'approved' ? '#16a34a' : '#d97706'
-                        }}>
-                          {review.status}
-                        </span>
                       </div>
-                      
-                      <p style={styles.commentText}>{review.comment}</p>
+
+                      <span className={`my-review-status-badge ${review.status || "pending"}`}>
+                        {getStatusLabel(review.status)}
+                      </span>
+                    </div>
+
+                    <p className="my-review-comment">
+                      {review.comment || "No written comment was added for this review."}
+                    </p>
+
+                    <div className="my-review-actions">
+                      <button
+                        type="button"
+                        className="my-review-edit-btn"
+                        onClick={() => navigate(`/product/${review.product_id}?editReview=${review.id}`)}
+                      >
+                        Edit Review
+                      </button>
                     </div>
                   </div>
-                </div>
+                </article>
               ))}
             </div>
           )}
@@ -131,33 +174,6 @@ const MyReviews = () => {
       </div>
     </div>
   );
-};
-
-const styles = {
-  primaryBtn: { 
-    padding: "12px 30px", background: "var(--pazaryolu-red)", color: "#fff", 
-    border: "none", borderRadius: "12px", fontWeight: "800", cursor: "pointer" 
-  },
-  reviewCard: {
-    background: 'white', padding: '25px', borderRadius: '20px', 
-    border: '1px solid #f0f0f0', boxShadow: '0 4px 15px rgba(0,0,0,0.02)'
-  },
-  productImg: {
-    width: '90px', height: '90px', borderRadius: '12px', objectFit: 'cover', background: '#f9fafb'
-  },
-  productName: {
-    margin: '0 0 8px 0', fontSize: '1.1rem', fontWeight: '800', color: '#111827'
-  },
-  ratingStars: {
-    color: '#fbbf24', fontSize: '1rem', fontWeight: '700'
-  },
-  commentText: {
-    margin: '15px 0 0 0', color: '#4b5563', lineHeight: '1.6', fontSize: '0.95rem'
-  },
-  statusBadge: {
-    padding: '4px 12px', borderRadius: '99px', fontSize: '0.75rem', 
-    fontWeight: '800', textTransform: 'capitalize'
-  }
 };
 
 export default MyReviews;

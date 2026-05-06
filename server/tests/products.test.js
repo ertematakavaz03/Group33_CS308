@@ -56,21 +56,24 @@ describe('GET /api/products/:id', () => {
 describe('GET /api/products/:id/reviews', () => {
     test('returns only approved reviews for a product', async () => {
         mockDb.query.mockResolvedValueOnce({
-            rows: [{ id: 1, rating: 5, comment: 'Great!', user_name: 'Alice' }]
+            rows: [{ id: 1, user_id: 2, rating: 5, comment: 'Great!', user_name: 'Alice' }]
         });
 
         const res = await request(app).get('/api/products/1/reviews');
 
         expect(res.status).toBe(200);
         expect(res.body[0].rating).toBe(5);
+        expect(res.body[0].user_id).toBe(2);
     });
 });
 
 describe('POST /api/products/:id/reviews', () => {
     test('successfully submits a review with pending status', async () => {
-        mockDb.query.mockResolvedValueOnce({
-            rows: [{ id: 1, product_id: 1, user_id: 2, rating: 4, comment: 'Good', status: 'pending' }]
-        });
+        mockDb.query
+            .mockResolvedValueOnce({ rows: [{ can_review: true }] })
+            .mockResolvedValueOnce({
+                rows: [{ id: 1, product_id: 1, user_id: 2, rating: 4, comment: 'Good', status: 'pending' }]
+            });
 
         const res = await request(app).post('/api/products/1/reviews').send({
             user_id: 2,
@@ -98,5 +101,77 @@ describe('POST /api/products/:id/reviews', () => {
         });
 
         expect(res.status).toBe(400);
+    });
+
+    test('returns 403 if user has not purchased the product', async () => {
+        mockDb.query.mockResolvedValueOnce({ rows: [{ can_review: false }] });
+
+        const res = await request(app).post('/api/products/1/reviews').send({
+            user_id: 2,
+            rating: 4,
+            comment: 'Good product'
+        });
+
+        expect(res.status).toBe(403);
+        expect(res.body.error).toMatch(/purchased/i);
+    });
+});
+
+describe('PUT /api/products/:productId/reviews/:reviewId', () => {
+    test('updates the current user review', async () => {
+        mockDb.query.mockResolvedValueOnce({
+            rows: [{
+                id: 7,
+                product_id: 1,
+                user_id: 2,
+                rating: 5,
+                comment: 'Updated review',
+                status: 'pending',
+                created_at: '2026-05-06T10:00:00.000Z',
+                updated_at: '2026-05-06T11:00:00.000Z',
+                user_name: 'Alice'
+            }]
+        });
+
+        const res = await request(app).put('/api/products/1/reviews/7').send({
+            user_id: 2,
+            rating: 5,
+            comment: 'Updated review'
+        });
+
+        expect(res.status).toBe(200);
+        expect(res.body.comment).toBe('Updated review');
+        expect(res.body.status).toBe('pending');
+        expect(res.body.updated_at).toBeDefined();
+    });
+
+    test('returns 404 when the review does not belong to the user', async () => {
+        mockDb.query.mockResolvedValueOnce({ rows: [] });
+
+        const res = await request(app).put('/api/products/1/reviews/7').send({
+            user_id: 99,
+            rating: 4,
+            comment: 'Trying to edit another review'
+        });
+
+        expect(res.status).toBe(404);
+    });
+});
+
+describe('GET /api/products/:id/review-eligibility', () => {
+    test('returns false when no user id is provided', async () => {
+        const res = await request(app).get('/api/products/1/review-eligibility');
+
+        expect(res.status).toBe(200);
+        expect(res.body).toEqual({ canReview: false });
+    });
+
+    test('returns true when user has purchased the product', async () => {
+        mockDb.query.mockResolvedValueOnce({ rows: [{ can_review: true }] });
+
+        const res = await request(app).get('/api/products/1/review-eligibility?userId=2');
+
+        expect(res.status).toBe(200);
+        expect(res.body).toEqual({ canReview: true });
     });
 });
