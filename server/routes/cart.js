@@ -72,7 +72,11 @@ router.post('/:userId/sync', async (req, res) => {
 router.post('/:userId', async (req, res) => {
     const { userId } = req.params;
     const { productId, quantity } = req.body;
-    const qty = quantity || 1;
+    const qty = quantity === undefined ? 1 : quantity;
+
+    if (!Number.isInteger(qty) || qty < 1) {
+        return res.status(400).json({ error: 'Quantity must be a positive integer' });
+    }
 
     try {
         const product = await req.db.query('SELECT stock FROM products WHERE id = $1', [productId]);
@@ -110,6 +114,10 @@ router.post('/:userId', async (req, res) => {
 router.put('/:userId/item/:productId', async (req, res) => {
     const { userId, productId } = req.params;
     const { quantity } = req.body;
+
+    if (!Number.isInteger(quantity)) {
+        return res.status(400).json({ error: 'Quantity must be an integer' });
+    }
 
     if (quantity <= 0) {
         try {

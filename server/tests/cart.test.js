@@ -68,6 +68,27 @@ describe('POST /api/cart/:userId', () => {
 
         expect(res.status).toBe(404);
     });
+
+    test('returns 400 when quantity is not a positive integer', async () => {
+        const res = await request(app).post('/api/cart/1').send({
+            productId: 5,
+            quantity: 0
+        });
+
+        expect(res.status).toBe(400);
+        expect(mockDb.query).not.toHaveBeenCalled();
+    });
+});
+
+describe('PUT /api/cart/:userId/item/:productId', () => {
+    test('returns 400 when quantity is not an integer', async () => {
+        const res = await request(app).put('/api/cart/1/item/5').send({
+            quantity: 1.5
+        });
+
+        expect(res.status).toBe(400);
+        expect(mockDb.query).not.toHaveBeenCalled();
+    });
 });
 
 describe('DELETE /api/cart/:userId/item/:productId', () => {

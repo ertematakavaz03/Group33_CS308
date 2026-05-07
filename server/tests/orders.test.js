@@ -53,6 +53,34 @@ describe('POST /api/orders/checkout', () => {
         expect(res.body.error).toMatch(/stock/i);
     });
 
+    test('returns 400 before transaction when checkout cart is empty', async () => {
+        const res = await request(app).post('/api/orders/checkout').send({
+            userId: 1,
+            userEmail: 'test@test.com',
+            items: [],
+            totalAmount: 0,
+            shippingAddressId: 1,
+            billingAddressId: 1
+        });
+
+        expect(res.status).toBe(400);
+        expect(mockDb.query).not.toHaveBeenCalled();
+    });
+
+    test('returns 400 before transaction when an item quantity is invalid', async () => {
+        const res = await request(app).post('/api/orders/checkout').send({
+            userId: 1,
+            userEmail: 'test@test.com',
+            items: [{ id: 1, quantity: 0, price: 100 }],
+            totalAmount: 100,
+            shippingAddressId: 1,
+            billingAddressId: 1
+        });
+
+        expect(res.status).toBe(400);
+        expect(mockDb.query).not.toHaveBeenCalled();
+    });
+
     test('successfully checks out multiple items', async () => {
         mockDb.query
             .mockResolvedValueOnce({ rows: [] })              // BEGIN
