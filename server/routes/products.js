@@ -89,12 +89,23 @@ router.get('/:id/reviews', async (req, res) => {
 router.post('/:id/reviews', async (req, res) => {
     const { id } = req.params;
     const { user_id, rating, comment } = req.body;
-    
+
     if (!user_id || !rating || rating < 1 || rating > 5) {
         return res.status(400).json({ error: 'Invalid review data' });
     }
 
     try {
+        const purchaseCheck = await req.db.query(
+            `SELECT 1 FROM order_items oi
+             JOIN orders o ON oi.order_id = o.id
+             WHERE o.user_id = $1 AND oi.product_id = $2
+             LIMIT 1`,
+            [user_id, id]
+        );
+        if (purchaseCheck.rows.length === 0) {
+            return res.status(403).json({ error: 'You can only review products you have purchased.' });
+        }
+
         const result = await req.db.query(
             `WITH inserted AS (
                 INSERT INTO reviews (product_id, user_id, rating, comment, status)

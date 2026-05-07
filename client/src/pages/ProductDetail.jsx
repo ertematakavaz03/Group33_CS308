@@ -11,6 +11,7 @@ const ProductDetail = () => {
   const [reviews, setReviews] = useState([]);
   const [reviewForm, setReviewForm] = useState({ rating: 5, comment: "" });
   const [reviewStatus, setReviewStatus] = useState("");
+  const [hasPurchased, setHasPurchased] = useState(false);
 
   const user = JSON.parse(localStorage.getItem("user") || "null");
 
@@ -30,6 +31,19 @@ const ProductDetail = () => {
       .then((res) => res.json())
       .then((data) => setReviews(Array.isArray(data) ? data : []))
       .catch(console.error);
+
+    const userId = user?.user?.id || user?.id;
+    if (userId) {
+      fetch(`http://localhost:5001/api/orders/my-orders/${userId}`)
+        .then((res) => res.json())
+        .then((orders) => {
+          const purchased = Array.isArray(orders) && orders.some((order) =>
+            order.items?.some((item) => String(item.product_id || item.id) === String(id))
+          );
+          setHasPurchased(purchased);
+        })
+        .catch(console.error);
+    }
   }, [id]);
 
   const handleReviewSubmit = async (e) => {
@@ -234,12 +248,16 @@ const ProductDetail = () => {
         {/* Write a Review */}
         <div style={{ marginBottom: "3rem", background: "#f9fafb", padding: "1.5rem", borderRadius: "12px" }}>
             <h3 style={{ fontSize: "1.1rem", fontWeight: "700", marginBottom: "1rem" }}>Leave a Review</h3>
-            {user ? (
+            {!user ? (
+                <p style={{ color: "#6b7280" }}>Please <a href="/login" style={{ color: "#b91c1c", fontWeight: "700", textDecoration: "none" }}>login</a> to leave a review.</p>
+            ) : !hasPurchased ? (
+                <p style={{ color: "#6b7280", fontStyle: "italic" }}>You can only review products you have purchased.</p>
+            ) : (
                 <form onSubmit={handleReviewSubmit}>
                     <div style={{ marginBottom: "1rem" }}>
                         <label style={{ display: "block", fontSize: "0.9rem", fontWeight: "600", marginBottom: "0.5rem" }}>Rating</label>
-                        <select 
-                            value={reviewForm.rating} 
+                        <select
+                            value={reviewForm.rating}
                             onChange={(e) => setReviewForm({...reviewForm, rating: Number(e.target.value)})}
                             style={{ padding: "0.5rem", borderRadius: "8px", border: "1px solid #e5e7eb", background: "#fff", width: "100%", maxWidth: "200px" }}
                         >
@@ -252,7 +270,7 @@ const ProductDetail = () => {
                     </div>
                     <div style={{ marginBottom: "1rem" }}>
                         <label style={{ display: "block", fontSize: "0.9rem", fontWeight: "600", marginBottom: "0.5rem" }}>Comment</label>
-                        <textarea 
+                        <textarea
                             value={reviewForm.comment}
                             onChange={(e) => setReviewForm({...reviewForm, comment: e.target.value})}
                             rows="3"
@@ -260,11 +278,9 @@ const ProductDetail = () => {
                             placeholder="Share your thoughts about this product..."
                         />
                     </div>
-                    {reviewStatus && <p style={{ fontSize: "0.9rem", color: reviewStatus.includes("error") || reviewStatus.includes("already") || reviewStatus.includes("Failed") ? "#dc2626" : "#16a34a", marginBottom: "1rem" }}>{reviewStatus}</p>}
+                    {reviewStatus && <p style={{ fontSize: "0.9rem", color: reviewStatus.includes("error") || reviewStatus.includes("already") || reviewStatus.includes("Failed") || reviewStatus.includes("purchased") ? "#dc2626" : "#16a34a", marginBottom: "1rem" }}>{reviewStatus}</p>}
                     <button type="submit" style={{ background: "#111", color: "#fff", border: "none", padding: "0.7rem 1.5rem", borderRadius: "8px", fontWeight: "700", cursor: "pointer" }}>Submit Review</button>
                 </form>
-            ) : (
-                <p style={{ color: "#6b7280" }}>Please <a href="/login" style={{ color: "#b91c1c", fontWeight: "700", textDecoration: "none" }}>login</a> to leave a review.</p>
             )}
         </div>
 
