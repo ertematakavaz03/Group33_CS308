@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate, Link, useLocation } from 'react-router-dom';
 
 const defaultCategories = [
   "All Categories",
@@ -21,7 +21,20 @@ const Dashboard = () => {
   const [currentSlide, setCurrentSlide] = useState(0);
   const [cartAnimating, setCartAnimating] = useState(false);
   const [stockAlert, setStockAlert] = useState('');
+  const [showAuthDropdown, setShowAuthDropdown] = useState(false);
+  const authDropdownRef = useRef(null);
+  const authCloseTimer = useRef(null);
+  const [showUserDropdown, setShowUserDropdown] = useState(false);
+  const userDropdownRef = useRef(null);
+  const userCloseTimer = useRef(null);
   const navigate = useNavigate();
+  const location = useLocation();
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const cat = params.get('category');
+    if (cat) setActiveCategory(cat);
+  }, [location.search]);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -49,6 +62,16 @@ const Dashboard = () => {
       window.removeEventListener('storage', syncUser);
       window.removeEventListener('userChanged', syncUser);
     };
+  }, []);
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (authDropdownRef.current && !authDropdownRef.current.contains(e.target)) {
+        setShowAuthDropdown(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
   const handleSignOut = (e) => {
@@ -294,28 +317,238 @@ const Dashboard = () => {
         <div className="navbar-links" style={{ display: 'flex', gap: '15px', alignItems: 'center' }}>
 
           {user ? (
-            <>
-              <Link
-                to="/profile"
-                className="nav-button nav-button-primary"
-                style={{ textDecoration: 'none' }}
-              >
-                Profile ({user?.user?.name || "User"})
-              </Link>
+            <div
+              ref={userDropdownRef}
+              style={{ position: 'relative' }}
+              onMouseEnter={() => {
+                clearTimeout(userCloseTimer.current);
+                setShowUserDropdown(true);
+              }}
+              onMouseLeave={() => {
+                userCloseTimer.current = setTimeout(() => setShowUserDropdown(false), 200);
+              }}
+            >
+              <button style={{
+                display: 'flex', alignItems: 'center', gap: '8px',
+                background: '#fff', color: 'var(--pazaryolu-red)',
+                border: '2px solid #fff', borderRadius: '12px',
+                padding: '0.55rem 1.1rem', fontWeight: '700',
+                fontSize: '0.95rem', cursor: 'pointer',
+              }}>
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="8" r="4"/>
+                  <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/>
+                </svg>
+                {user?.user?.name?.split(' ')[0] || 'Account'}
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ transition: 'transform 0.2s', transform: showUserDropdown ? 'rotate(180deg)' : 'rotate(0deg)' }}>
+                  <polyline points="6 9 12 15 18 9"/>
+                </svg>
+              </button>
 
-              <Link
-                to="/"
-                onClick={handleSignOut}
-                className="nav-button nav-button-primary"
-              >
-                Sign Out
-              </Link>
-            </>
+              {showUserDropdown && (
+                <div style={{
+                  position: 'absolute', top: 'calc(100% + 8px)', right: 0,
+                  background: '#fff', borderRadius: '14px',
+                  boxShadow: '0 8px 32px rgba(0,0,0,0.15)',
+                  minWidth: '220px', zIndex: 1000,
+                  border: '1px solid rgba(0,0,0,0.07)',
+                  overflow: 'hidden'
+                }}>
+                  {/* arrow */}
+                  <div style={{
+                    position: 'absolute', top: '-7px', right: '22px',
+                    width: 0, height: 0,
+                    borderLeft: '7px solid transparent',
+                    borderRight: '7px solid transparent',
+                    borderBottom: '7px solid #fff',
+                    filter: 'drop-shadow(0 -2px 2px rgba(0,0,0,0.07))'
+                  }} />
+
+                  {/* user info header */}
+                  <div style={{
+                    padding: '1rem 1.2rem 0.75rem',
+                    borderBottom: '1px solid #f3f4f6',
+                    background: '#fafafa'
+                  }}>
+                    <div style={{ fontWeight: '700', fontSize: '0.95rem', color: '#111' }}>
+                      {user?.user?.name || 'User'}
+                    </div>
+                    <div style={{ fontSize: '0.8rem', color: '#6b7280', marginTop: '2px' }}>
+                      {user?.user?.email || ''}
+                    </div>
+                  </div>
+
+                  {/* menu items */}
+                  {[
+                    {
+                      to: '/myaccount/info', label: 'Account Information',
+                      svg: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+                    },
+                    {
+                      to: '/myaccount/myorders', label: 'My Orders',
+                      svg: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+                    },
+                    {
+                      to: '/myaccount/myreviews', label: 'My Reviews',
+                      svg: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                    },
+                    {
+                      to: '/myaccount/addresses', label: 'My Addresses',
+                      svg: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                    },
+                  ].map(({ to, svg, label }) => (
+                    <Link
+                      key={label}
+                      to={to}
+                      onClick={() => setShowUserDropdown(false)}
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: '10px',
+                        padding: '0.7rem 1.2rem',
+                        color: '#374151', fontWeight: '600', fontSize: '0.875rem',
+                        textDecoration: 'none', whiteSpace: 'nowrap',
+                        borderBottom: '1px solid #f3f4f6',
+                        transition: 'background 0.12s'
+                      }}
+                      onMouseEnter={e => e.currentTarget.style.background = '#f9fafb'}
+                      onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                    >
+                      <span style={{ color: '#9ca3af', flexShrink: 0 }}>{svg}</span>
+                      {label}
+                    </Link>
+                  ))}
+
+                  {/* sign out */}
+                  <button
+                    onClick={() => { setShowUserDropdown(false); handleSignOut(); }}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: '10px',
+                      width: '100%', padding: '0.7rem 1.2rem',
+                      background: 'transparent', border: 'none',
+                      color: 'var(--pazaryolu-red)', fontWeight: '700',
+                      fontSize: '0.875rem', cursor: 'pointer',
+                      transition: 'background 0.12s', textAlign: 'left',
+                      whiteSpace: 'nowrap'
+                    }}
+                    onMouseEnter={e => e.currentTarget.style.background = '#fef2f2'}
+                    onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                  >
+                    <span style={{ color: 'var(--pazaryolu-red)', flexShrink: 0 }}>
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+                    </span>
+                    Sign Out
+                  </button>
+                </div>
+              )}
+            </div>
           ) : (
-            <>
-              <Link to="/login" className="nav-button nav-button-primary">Login</Link>
-              <Link to="/signup" className="nav-button nav-button-primary">Sign Up</Link>
-            </>
+            <div
+              ref={authDropdownRef}
+              style={{ position: 'relative' }}
+              onMouseEnter={() => {
+                clearTimeout(authCloseTimer.current);
+                setShowAuthDropdown(true);
+              }}
+              onMouseLeave={() => {
+                authCloseTimer.current = setTimeout(() => setShowAuthDropdown(false), 200);
+              }}
+            >
+              <button
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  background: '#fff',
+                  color: 'var(--pazaryolu-red)',
+                  border: '2px solid #fff',
+                  borderRadius: '12px',
+                  padding: '0.55rem 1.1rem',
+                  fontWeight: '700',
+                  fontSize: '0.95rem',
+                  cursor: 'pointer',
+                }}
+              >
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="8" r="4"/>
+                  <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/>
+                </svg>
+                Login
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ transition: 'transform 0.2s', transform: showAuthDropdown ? 'rotate(180deg)' : 'rotate(0deg)' }}>
+                  <polyline points="6 9 12 15 18 9"/>
+                </svg>
+              </button>
+
+              {showAuthDropdown && (
+                <div style={{
+                  position: 'absolute',
+                  top: 'calc(100% + 8px)',
+                  right: 0,
+                  background: '#fff',
+                  borderRadius: '14px',
+                  boxShadow: '0 8px 32px rgba(0,0,0,0.15)',
+                  minWidth: '180px',
+                  zIndex: 1000,
+                  border: '1px solid rgba(0,0,0,0.07)',
+                  padding: '0.6rem',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '0.4rem'
+                }}>
+                  {/* arrow */}
+                  <div style={{
+                    position: 'absolute',
+                    top: '-7px',
+                    right: '22px',
+                    width: 0,
+                    height: 0,
+                    borderLeft: '7px solid transparent',
+                    borderRight: '7px solid transparent',
+                    borderBottom: '7px solid #fff',
+                    filter: 'drop-shadow(0 -2px 2px rgba(0,0,0,0.07))'
+                  }} />
+                  <Link
+                    to="/login"
+                    onClick={() => setShowAuthDropdown(false)}
+                    style={{
+                      display: 'block',
+                      padding: '0.7rem 1rem',
+                      background: 'var(--pazaryolu-red)',
+                      color: '#fff',
+                      fontWeight: '700',
+                      fontSize: '0.95rem',
+                      textDecoration: 'none',
+                      borderRadius: '9px',
+                      textAlign: 'center',
+                      transition: 'opacity 0.15s'
+                    }}
+                    onMouseEnter={e => e.currentTarget.style.opacity = '0.88'}
+                    onMouseLeave={e => e.currentTarget.style.opacity = '1'}
+                  >
+                    Login
+                  </Link>
+                  <Link
+                    to="/signup"
+                    onClick={() => setShowAuthDropdown(false)}
+                    style={{
+                      display: 'block',
+                      padding: '0.7rem 1rem',
+                      background: '#fff',
+                      color: 'var(--pazaryolu-red)',
+                      fontWeight: '700',
+                      fontSize: '0.95rem',
+                      textDecoration: 'none',
+                      borderRadius: '9px',
+                      textAlign: 'center',
+                      border: '1.5px solid var(--pazaryolu-red)',
+                      transition: 'background 0.15s'
+                    }}
+                    onMouseEnter={e => e.currentTarget.style.background = '#fef2f2'}
+                    onMouseLeave={e => e.currentTarget.style.background = '#fff'}
+                  >
+                    Sign Up
+                  </Link>
+                </div>
+              )}
+            </div>
           )}
 
           <Link to="/cart" style={{ display: 'flex', alignItems: 'flex-end', textDecoration: 'none', marginLeft: '5px' }} title="Go to Cart">

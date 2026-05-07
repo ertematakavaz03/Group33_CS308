@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 
 const Profile = () => {
   const navigate = useNavigate();
@@ -52,15 +52,18 @@ const Profile = () => {
   return (
     <div style={{ minHeight: "100vh", background: "#F3F4F6" }}>
 
-      {/* Top Bar */}
-      <div style={{
-        background: "var(--pazaryolu-red)", padding: "0 2rem", height: "64px",
-        display: "flex", alignItems: "center", gap: "1rem",
-        boxShadow: "0 2px 12px rgba(0,0,0,0.15)"
-      }}>
-        <button onClick={() => navigate("/")} style={s.backBtn}>← Home</button>
-        <span style={{ color: "#fff", fontWeight: "700", fontSize: "1.1rem" }}>My Profile</span>
-      </div>
+      <header className="navbar" style={{ backgroundColor: 'var(--pazaryolu-red)', borderBottom: 'none' }}>
+        <div className="navbar-logo-container" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+          <Link to="/"><img src="/logo.png" alt="PazarYolu Logo" className="navbar-logo" /></Link>
+          <div style={{ width: '1px', height: '28px', background: 'rgba(255,255,255,0.3)' }} />
+          <span style={{ color: '#fff', fontWeight: '700', fontSize: '1rem' }}>My Profile</span>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center' }}>
+          <button onClick={() => navigate("/")} style={{ background: 'rgba(255,255,255,0.15)', border: '1.5px solid rgba(255,255,255,0.3)', color: '#fff', borderRadius: '10px', padding: '0.45rem 1rem', cursor: 'pointer', fontWeight: '600', fontSize: '0.85rem' }}>
+            ← Back to Home
+          </button>
+        </div>
+      </header>
 
       <div style={{ maxWidth: "760px", margin: "2.5rem auto", padding: "0 1.25rem", display: "flex", flexDirection: "column", gap: "1.25rem" }}>
 

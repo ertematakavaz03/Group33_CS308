@@ -45,4 +45,34 @@ router.post('/', async (req, res) => {
   }
 });
 
+// Update address
+router.put('/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { title, full_address, city, district, postal_code } = req.body;
+    const result = await req.db.query(
+      `UPDATE addresses SET title=$1, full_address=$2, city=$3, district=$4, postal_code=$5
+       WHERE id=$6 RETURNING *`,
+      [title, full_address, city, district, postal_code, id]
+    );
+    if (result.rows.length === 0) return res.status(404).json({ error: 'Address not found' });
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Failed to update address' });
+  }
+});
+
+// Delete address
+router.delete('/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    await req.db.query('DELETE FROM addresses WHERE id=$1', [id]);
+    res.json({ message: 'Address deleted' });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Failed to delete address' });
+  }
+});
+
 module.exports = router;

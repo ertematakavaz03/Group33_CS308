@@ -90,7 +90,7 @@ router.post('/:id/reviews', async (req, res) => {
     const { id } = req.params;
     const { user_id, rating, comment } = req.body;
 
-    if (!user_id || !rating || rating < 1 || rating > 5) {
+    if (!user_id || isNaN(Number(user_id)) || !rating || rating < 1 || rating > 5) {
         return res.status(400).json({ error: 'Invalid review data' });
     }
 
@@ -124,6 +124,25 @@ router.post('/:id/reviews', async (req, res) => {
             return res.status(400).json({ error: 'You have already reviewed this product' });
         }
         console.error('Error adding review:', err);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+// Get all reviews by a user
+router.get('/user-reviews/:userId', async (req, res) => {
+    const { userId } = req.params;
+    try {
+        const result = await req.db.query(
+            `SELECT r.id, r.product_id, r.rating, r.comment, r.status, r.created_at, p.name AS product_name
+             FROM reviews r
+             JOIN products p ON r.product_id = p.id
+             WHERE r.user_id = $1
+             ORDER BY r.created_at DESC`,
+            [userId]
+        );
+        res.json(result.rows);
+    } catch (err) {
+        console.error('Error fetching user reviews:', err);
         res.status(500).json({ error: 'Internal server error' });
     }
 });

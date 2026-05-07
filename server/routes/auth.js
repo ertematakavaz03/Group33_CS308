@@ -92,4 +92,37 @@ router.post('/login', async (req, res) => {
     }
 });
 
+// update user profile
+router.put('/update/:id', async (req, res) => {
+    const { id } = req.params;
+    const { name, email, phone, password } = req.body;
+
+    try {
+        const existing = await req.db.query('SELECT * FROM users WHERE id = $1', [id]);
+        if (existing.rows.length === 0) return res.status(404).json({ error: 'User not found' });
+
+        const duplicate = await req.db.query(
+            'SELECT id FROM users WHERE (email = $1 OR phone = $2) AND id != $3',
+            [email, phone ? phone.replace(/\D/g, '') : '', id]
+        );
+        if (duplicate.rows.length > 0) return res.status(400).json({ error: 'Email or phone already in use by another account' });
+
+        let hashedPassword = existing.rows[0].password;
+        if (password && password.trim().length > 0) {
+            hashedPassword = await bcrypt.hash(password, SALT_ROUNDS);
+        }
+
+        const result = await req.db.query(
+            `UPDATE users SET name=$1, email=$2, phone=$3, password=$4 WHERE id=$5
+             RETURNING id, name, email, phone, role`,
+            [name, email, phone ? phone.replace(/\D/g, '') : existing.rows[0].phone, hashedPassword, id]
+        );
+
+        res.json({ message: 'Profile updated successfully', user: result.rows[0] });
+    } catch (err) {
+        console.error('Update error:', err);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
 module.exports = router;

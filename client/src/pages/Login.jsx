@@ -65,27 +65,24 @@ const Login = () => {
   };
 
   return (
-    <div style={{ minHeight: "100vh", background: "#F3F4F6", position: "relative" }}>
+    <div style={{ minHeight: "100vh", background: "#F3F4F6" }}>
 
-      {/* Back to Home — fixed top left */}
-      <div style={{ position: "absolute", top: "1.25rem", left: "1.5rem" }}>
-        <button
-          onClick={() => navigate('/')}
-          style={{
-            display: "inline-flex", alignItems: "center", gap: "6px",
-            background: "#fff", border: "1px solid #E5E7EB",
-            borderRadius: "10px", padding: "0.5rem 1rem",
-            fontWeight: "600", fontSize: "0.85rem", color: "#374151",
-            cursor: "pointer", boxShadow: "0 1px 4px rgba(0,0,0,0.06)",
-          }}
-        >
-          ← Back to Home
-        </button>
-      </div>
+      <header className="navbar" style={{ backgroundColor: 'var(--pazaryolu-red)', borderBottom: 'none' }}>
+        <div className="navbar-logo-container" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+          <Link to="/"><img src="/logo.png" alt="PazarYolu Logo" className="navbar-logo" /></Link>
+          <div style={{ width: '1px', height: '28px', background: 'rgba(255,255,255,0.3)' }} />
+          <span style={{ color: '#fff', fontWeight: '700', fontSize: '1rem' }}>Login</span>
+        </div>
+        <div>
+          <button onClick={() => navigate('/')} style={{ background: 'rgba(255,255,255,0.15)', border: '1.5px solid rgba(255,255,255,0.3)', color: '#fff', borderRadius: '10px', padding: '0.45rem 1rem', cursor: 'pointer', fontWeight: '600', fontSize: '0.85rem' }}>
+            ← Back to Home
+          </button>
+        </div>
+      </header>
 
       <div style={{
         display: "flex", flexDirection: "column", alignItems: "center",
-        justifyContent: "center", minHeight: "100vh", padding: "5rem 1rem 2rem",
+        justifyContent: "center", minHeight: "calc(100vh - 68px)", padding: "2rem 1rem",
         boxSizing: "border-box",
       }}>
         {/* Card */}

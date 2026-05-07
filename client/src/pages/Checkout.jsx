@@ -389,7 +389,7 @@ const Checkout = () => {
                 Download PDF
               </button>
               <button
-                onClick={() => navigate("/orders")}
+                onClick={() => navigate("/myaccount/myorders")}
                 style={{ flex: 1, padding: "0.9rem", background: "#f3f4f6", color: "#111", border: "none", borderRadius: "10px", fontWeight: "700", fontSize: "0.95rem", cursor: "pointer" }}
               >
                 My Orders
