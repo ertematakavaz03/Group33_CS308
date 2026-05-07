@@ -28,16 +28,18 @@ const sendOrderEmail = async (to, orderInfo) => {
   const html = `
   <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,0.08)">
     <div style="background:#8B0000;padding:32px;color:#fff">
-      <div style="display:flex;justify-content:space-between;align-items:flex-start">
-        <div>
-          <h1 style="margin:0;font-size:24px;font-weight:800">INVOICE</h1>
-          <p style="margin:4px 0 0;opacity:0.85;font-size:13px">PazarYolu Marketplace</p>
-        </div>
-        <div style="text-align:right">
-          <div style="font-size:15px;font-weight:700">Order #${orderInfo.orderId}</div>
-          <div style="font-size:12px;opacity:0.85;margin-top:4px">${orderInfo.date || new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'long',year:'numeric'})}</div>
-        </div>
-      </div>
+      <table width="100%" cellpadding="0" cellspacing="0" border="0">
+        <tr>
+          <td style="vertical-align:top">
+            <div style="font-size:24px;font-weight:800;color:#fff;margin:0">INVOICE</div>
+            <div style="font-size:13px;color:rgba(255,255,255,0.85);margin-top:4px">PazarYolu Marketplace</div>
+          </td>
+          <td style="vertical-align:top;text-align:right">
+            <div style="font-size:15px;font-weight:700;color:#fff">Order #${orderInfo.orderId}</div>
+            <div style="font-size:12px;color:rgba(255,255,255,0.85);margin-top:4px">${orderInfo.date || new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'long',year:'numeric'})}</div>
+          </td>
+        </tr>
+      </table>
     </div>
     <div style="padding:28px">
       <div style="background:#f8f9fa;border-radius:8px;padding:14px 16px;margin-bottom:20px">

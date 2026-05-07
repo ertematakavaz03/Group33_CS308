@@ -7,6 +7,7 @@ const ProductDetail = () => {
   const [product, setProduct] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [added, setAdded] = useState(false);
+  const [stockAlert, setStockAlert] = useState('');
   const [reviews, setReviews] = useState([]);
   const [reviewForm, setReviewForm] = useState({ rating: 5, comment: "" });
   const [reviewStatus, setReviewStatus] = useState("");
@@ -58,13 +59,21 @@ const ProductDetail = () => {
   };
 
   const handleAddToCart = async () => {
-    if (!product || product.stock <= 0) return;
+    if (!product || product.stock <= 0) {
+      setStockAlert('This product is out of stock.');
+      setTimeout(() => setStockAlert(''), 3000);
+      return;
+    }
     const cartKey = getCartKey();
     const existing = JSON.parse(localStorage.getItem(cartKey) || "[]");
     const found = existing.find((item) => item.id === product.id);
     let updatedCart;
     if (found) {
-      if (found.quantity >= product.stock) return;
+      if (found.quantity >= product.stock) {
+        setStockAlert(`No more stock available. Only ${product.stock} in stock.`);
+        setTimeout(() => setStockAlert(''), 3000);
+        return;
+      }
       updatedCart = existing.map((item) =>
         item.id === product.id ? { ...item, quantity: item.quantity + 1 } : item
       );
@@ -108,6 +117,33 @@ const ProductDetail = () => {
 
   return (
     <div style={{ maxWidth:"1100px", margin:"2rem auto", padding:"0 2rem 4rem" }}>
+      {stockAlert && (
+        <div style={{
+          position: 'fixed',
+          top: 0, left: 0, right: 0, bottom: 0,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 9999,
+          pointerEvents: 'none'
+        }}>
+          <div style={{
+            background: '#1a1a1a',
+            color: '#fff',
+            padding: '1.2rem 2rem',
+            borderRadius: '16px',
+            fontWeight: '700',
+            fontSize: '1rem',
+            boxShadow: '0 12px 40px rgba(0,0,0,0.4)',
+            border: '2px solid #b22222',
+            maxWidth: '380px',
+            textAlign: 'center'
+          }}>
+            🚫 {stockAlert}
+          </div>
+        </div>
+      )}
+
       <button onClick={() => navigate(-1)} style={{ background:"none", border:"none", cursor:"pointer", fontSize:"1rem", fontWeight:"700", color:"#111", marginBottom:"1.5rem", display:"inline-flex", alignItems:"center", gap:"6px" }}>
         ← Back
       </button>

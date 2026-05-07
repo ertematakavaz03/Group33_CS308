@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 const Cart = () => {
@@ -36,6 +36,15 @@ const Cart = () => {
     }
   }, [user?.id, user?.user?.id]);
 
+  const [stockAlert, setStockAlert] = useState('');
+  const alertTimer = useRef(null);
+
+  const showStockAlert = (msg) => {
+    setStockAlert(msg);
+    clearTimeout(alertTimer.current);
+    alertTimer.current = setTimeout(() => setStockAlert(''), 3000);
+  };
+
   const [topSellersIds, setTopSellersIds] = useState([]);
   useEffect(() => {
     fetch('http://localhost:5001/api/products')
@@ -54,6 +63,11 @@ const Cart = () => {
   const handleIncrease = async (id) => {
     const item = cart.find(i => i.id === id);
     if (!item) return;
+
+    if (item.quantity >= item.stock) {
+      showStockAlert(`No more stock available for "${item.name}". Only ${item.stock} in stock.`);
+      return;
+    }
 
     setCart((prevCart) =>
       prevCart.map((item) =>
@@ -139,6 +153,33 @@ const Cart = () => {
         animation: 'fadeIn 0.5s ease-in-out'
       }}
     >
+      {stockAlert && (
+        <div style={{
+          position: 'fixed',
+          top: 0, left: 0, right: 0, bottom: 0,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 9999,
+          pointerEvents: 'none'
+        }}>
+          <div style={{
+            background: '#1a1a1a',
+            color: '#fff',
+            padding: '1.2rem 2rem',
+            borderRadius: '16px',
+            fontWeight: '700',
+            fontSize: '1rem',
+            boxShadow: '0 12px 40px rgba(0,0,0,0.4)',
+            border: '2px solid #b22222',
+            maxWidth: '380px',
+            textAlign: 'center',
+            animation: 'fadeIn 0.2s ease'
+          }}>
+            🚫 {stockAlert}
+          </div>
+        </div>
+      )}
       <div
         style={{
           display: 'flex',
@@ -375,15 +416,18 @@ const Cart = () => {
 
                     <button
                       onClick={() => handleIncrease(item.id)}
+                      disabled={item.quantity >= item.stock}
                       style={{
                         width: '38px',
                         height: '38px',
                         borderRadius: '12px',
                         border: '1px solid #e5e7eb',
-                        background: '#fff',
-                        cursor: 'pointer',
+                        background: item.quantity >= item.stock ? '#f3f4f6' : '#fff',
+                        cursor: item.quantity >= item.stock ? 'not-allowed' : 'pointer',
                         fontSize: '1.1rem',
-                        fontWeight: '700'
+                        fontWeight: '700',
+                        color: item.quantity >= item.stock ? '#9ca3af' : 'inherit',
+                        opacity: item.quantity >= item.stock ? 0.6 : 1
                       }}
                     >
                       +

@@ -20,6 +20,7 @@ const Dashboard = () => {
   const [error, setError] = useState(null);
   const [currentSlide, setCurrentSlide] = useState(0);
   const [cartAnimating, setCartAnimating] = useState(false);
+  const [stockAlert, setStockAlert] = useState('');
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -126,7 +127,21 @@ const Dashboard = () => {
       : defaultCategories.filter(c => c !== "All Categories"))
   ];
 
+  const showStockAlert = (msg) => {
+    setStockAlert(msg);
+    setTimeout(() => setStockAlert(''), 3000);
+  };
+
   const handleAddToCart = async (product) => {
+    if (product.stock <= 0) {
+      showStockAlert('This product is out of stock.');
+      return;
+    }
+    const existing = cart.find((item) => item.id === product.id);
+    if (existing && existing.quantity >= product.stock) {
+      showStockAlert(`No more stock available for "${product.name}".`);
+      return;
+    }
     setCart((prevCart) => {
       const existingProduct = prevCart.find((item) => item.id === product.id);
       if (existingProduct) {
@@ -234,6 +249,34 @@ const Dashboard = () => {
 
   return (
     <div className="main-page-wrapper" style={{ animation: 'fadeIn 0.5s ease-in-out' }}>
+
+      {stockAlert && (
+        <div style={{
+          position: 'fixed',
+          top: 0, left: 0, right: 0, bottom: 0,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 9999,
+          pointerEvents: 'none'
+        }}>
+          <div style={{
+            background: '#1a1a1a',
+            color: '#fff',
+            padding: '1.2rem 2rem',
+            borderRadius: '16px',
+            fontWeight: '700',
+            fontSize: '1rem',
+            boxShadow: '0 12px 40px rgba(0,0,0,0.4)',
+            border: '2px solid #b22222',
+            maxWidth: '380px',
+            textAlign: 'center',
+            animation: 'fadeIn 0.2s ease'
+          }}>
+            🚫 {stockAlert}
+          </div>
+        </div>
+      )}
 
       {/* --- TOP NAVIGATION BAR --- */}
       <header className="navbar" style={{ backgroundColor: 'var(--pazaryolu-red)', borderBottom: 'none' }}>
