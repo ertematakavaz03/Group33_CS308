@@ -203,6 +203,7 @@ const Checkout = () => {
             body: JSON.stringify({
                 userId: currentUser?.id,
                 userEmail: currentUser?.email,
+                userName: currentUser?.name,
                 items: cartItems,
                 totalAmount,
                 shippingAddressId,
@@ -373,7 +374,16 @@ const Checkout = () => {
             {/* Action Buttons */}
             <div className="no-print" style={{ display: "flex", gap: "1rem" }}>
               <button
-                onClick={() => window.print()}
+                onClick={async () => {
+                  const res = await fetch(`http://localhost:5001/api/orders/${invoiceData.orderId}/invoice`);
+                  const blob = await res.blob();
+                  const url = URL.createObjectURL(blob);
+                  const a = document.createElement("a");
+                  a.href = url;
+                  a.download = `invoice-order-${invoiceData.orderId}.pdf`;
+                  a.click();
+                  URL.revokeObjectURL(url);
+                }}
                 style={{ flex: 1, padding: "0.9rem", background: "var(--pazaryolu-red)", color: "#fff", border: "none", borderRadius: "10px", fontWeight: "700", fontSize: "0.95rem", cursor: "pointer" }}
               >
                 Download PDF

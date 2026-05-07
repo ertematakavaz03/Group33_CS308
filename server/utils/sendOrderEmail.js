@@ -1,4 +1,5 @@
 const nodemailer = require('nodemailer');
+const generateInvoicePDF = require('./generateInvoicePDF');
 
 const sendOrderEmail = async (to, orderInfo) => {
   const transporter = nodemailer.createTransport({
@@ -9,44 +10,83 @@ const sendOrderEmail = async (to, orderInfo) => {
     }
   });
 
-  const itemsHtml = orderInfo.items.map((item) => {
-    return `<li>${item.name} x ${item.quantity} - $${Number(item.price).toFixed(2)}</li>`;
-  }).join('');
+  const pdfBuffer = await generateInvoicePDF(orderInfo);
 
   const formatAddress = (addr) => {
     if (!addr) return 'Not provided';
     return `${addr.title}<br>${addr.full_address}<br>${addr.district || ''}, ${addr.city || ''} ${addr.postal_code || ''}`;
   };
 
-  const mailOptions = {
-    from: process.env.EMAIL_USER,
-    to,
-    subject: 'Order Confirmation',
-    html: `
-      <h2>Thank you for your order</h2>
-      <p>Your order has been received successfully.</p>
-      <p><strong>Order Number:</strong> ${orderInfo.orderId}</p>
-      <p><strong>Total:</strong> $${Number(orderInfo.totalAmount).toFixed(2)}</p>
-      
-      <div style="display: flex; gap: 20px; margin-top: 20px;">
-        <div style="flex: 1; padding: 15px; border: 1px solid #eee; border-radius: 8px;">
-          <h3 style="margin-top: 0;">Shipping Address</h3>
-          <p>${formatAddress(orderInfo.shippingAddress)}</p>
+  const itemsHtml = orderInfo.items.map((item) =>
+    `<tr>
+      <td style="padding:10px 14px;border-bottom:1px solid #f0f0f0;font-weight:600">${item.name}</td>
+      <td style="padding:10px 14px;border-bottom:1px solid #f0f0f0;text-align:center;color:#666">x${item.quantity}</td>
+      <td style="padding:10px 14px;border-bottom:1px solid #f0f0f0;text-align:right;font-weight:600">$${(item.price * item.quantity).toFixed(2)}</td>
+    </tr>`
+  ).join('');
+
+  const html = `
+  <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,0.08)">
+    <div style="background:#8B0000;padding:32px;color:#fff">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start">
+        <div>
+          <h1 style="margin:0;font-size:24px;font-weight:800">INVOICE</h1>
+          <p style="margin:4px 0 0;opacity:0.85;font-size:13px">PazarYolu Marketplace</p>
         </div>
-        <div style="flex: 1; padding: 15px; border: 1px solid #eee; border-radius: 8px;">
-          <h3 style="margin-top: 0;">Billing Address</h3>
-          <p>${formatAddress(orderInfo.billingAddress)}</p>
+        <div style="text-align:right">
+          <div style="font-size:15px;font-weight:700">Order #${orderInfo.orderId}</div>
+          <div style="font-size:12px;opacity:0.85;margin-top:4px">${orderInfo.date || new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'long',year:'numeric'})}</div>
         </div>
       </div>
+    </div>
+    <div style="padding:28px">
+      <div style="background:#f8f9fa;border-radius:8px;padding:14px 16px;margin-bottom:20px">
+        <p style="margin:0 0 4px;font-size:11px;font-weight:700;color:#888;letter-spacing:0.08em">BILLED TO</p>
+        <p style="margin:0;font-weight:600;color:#111">${orderInfo.customerName || ''}</p>
+        <p style="margin:2px 0 0;color:#666;font-size:13px">${to}</p>
+      </div>
+      <p style="margin:0 0 8px;font-size:11px;font-weight:700;color:#888;letter-spacing:0.08em">ITEMS</p>
+      <table style="width:100%;border-collapse:collapse;border:1px solid #f0f0f0;border-radius:8px;overflow:hidden">
+        <thead>
+          <tr style="background:#f8f9fa">
+            <th style="padding:10px 14px;text-align:left;font-size:11px;color:#888;letter-spacing:0.06em">PRODUCT</th>
+            <th style="padding:10px 14px;text-align:center;font-size:11px;color:#888;letter-spacing:0.06em">QTY</th>
+            <th style="padding:10px 14px;text-align:right;font-size:11px;color:#888;letter-spacing:0.06em">PRICE</th>
+          </tr>
+        </thead>
+        <tbody>${itemsHtml}</tbody>
+        <tfoot>
+          <tr style="background:#fafafa;border-top:2px solid #f0f0f0">
+            <td colspan="2" style="padding:12px 14px;font-weight:800;color:#111">Total</td>
+            <td style="padding:12px 14px;text-align:right;font-weight:800;font-size:15px;color:#8B0000">$${Number(orderInfo.totalAmount).toFixed(2)}</td>
+          </tr>
+        </tfoot>
+      </table>
+      ${orderInfo.shippingAddress ? `
+      <div style="margin-top:20px;background:#f8f9fa;border-radius:8px;padding:14px 16px">
+        <p style="margin:0 0 6px;font-size:11px;font-weight:700;color:#888;letter-spacing:0.08em">SHIPPING ADDRESS</p>
+        <p style="margin:0;font-weight:600;color:#111">${orderInfo.shippingAddress.title || ''}</p>
+        <p style="margin:2px 0 0;color:#666;font-size:13px">${formatAddress(orderInfo.shippingAddress)}</p>
+      </div>` : ''}
+      <p style="text-align:center;color:#16a34a;font-weight:600;font-size:13px;margin-top:20px">
+        Your invoice PDF is attached to this email.
+      </p>
+    </div>
+  </div>`;
 
-      <h3 style="margin-top: 20px;">Items:</h3>
-      <ul>
-        ${itemsHtml}
-      </ul>
-    `
-  };
-
-  await transporter.sendMail(mailOptions);
+  await transporter.sendMail({
+    from: `"PazarYolu" <${process.env.EMAIL_USER}>`,
+    to,
+    subject: `Order Confirmation – Order #${orderInfo.orderId}`,
+    html,
+    attachments: [
+      {
+        filename: `invoice-order-${orderInfo.orderId}.pdf`,
+        content: pdfBuffer,
+        contentType: 'application/pdf'
+      }
+    ]
+  });
 };
 
 module.exports = sendOrderEmail;

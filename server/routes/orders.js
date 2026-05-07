@@ -1,11 +1,12 @@
 const express = require('express');
 const router = express.Router();
 const sendOrderEmail = require('../utils/sendOrderEmail');
+const generateInvoicePDF = require('../utils/generateInvoicePDF');
 
 // customer checkout
 router.post('/checkout', async (req, res) => {
   try {
-    const { userId, userEmail, items, totalAmount, shippingAddressId, billingAddressId } = req.body;
+    const { userId, userEmail, userName, items, totalAmount, shippingAddressId, billingAddressId } = req.body;
 
     await req.db.query('BEGIN');
 
@@ -60,6 +61,9 @@ if (billingAddressId) {
 
 await sendOrderEmail(userEmail, {
   orderId,
+  customerName: userName,
+  customerEmail: userEmail,
+  date: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' }),
   items,
   totalAmount,
   shippingAddress,
@@ -111,6 +115,64 @@ router.get('/my-orders/:userId', async (req, res) => {
   } catch (error) {
     console.error('Error fetching user orders:', error);
     res.status(500).json({ error: 'Failed to fetch orders.' });
+  }
+});
+
+// download invoice PDF for a specific order
+router.get('/:id/invoice', async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const orderResult = await req.db.query(
+      `SELECT o.*, u.name AS user_name, u.email AS user_email,
+              a_ship.title AS ship_title, a_ship.full_address AS ship_full_address,
+              a_ship.city AS ship_city, a_ship.district AS ship_district,
+              a_ship.postal_code AS ship_postal_code
+       FROM orders o
+       LEFT JOIN users u ON o.user_id = u.id
+       LEFT JOIN addresses a_ship ON o.shipping_address_id = a_ship.id
+       WHERE o.id = $1`,
+      [id]
+    );
+
+    if (orderResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Order not found' });
+    }
+
+    const order = orderResult.rows[0];
+    const itemsResult = await req.db.query(
+      `SELECT oi.quantity, oi.price_at_purchase AS price, p.name
+       FROM order_items oi
+       LEFT JOIN products p ON oi.product_id = p.id
+       WHERE oi.order_id = $1`,
+      [id]
+    );
+
+    const pdfBuffer = await generateInvoicePDF({
+      orderId: order.id,
+      customerName: order.user_name,
+      customerEmail: order.user_email,
+      date: new Date(order.created_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' }),
+      items: itemsResult.rows,
+      totalAmount: order.total_amount,
+      shippingAddress: order.ship_full_address ? {
+        title: order.ship_title,
+        full_address: order.ship_full_address,
+        city: order.ship_city,
+        district: order.ship_district,
+        postal_code: order.ship_postal_code
+      } : null
+    });
+
+    res.set({
+      'Content-Type': 'application/pdf',
+      'Content-Disposition': `attachment; filename="invoice-order-${id}.pdf"`,
+      'Content-Length': pdfBuffer.length
+    });
+    res.send(pdfBuffer);
+  } catch (error) {
+    console.error('Error generating invoice PDF:', error);
+    res.status(500).json({ error: 'Failed to generate invoice.' });
   }
 });
 
