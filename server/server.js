@@ -38,6 +38,10 @@ app.use('/api/orders', orderRoutes);
 app.use('/api/addresses', addressRoutes);
 app.use('/api/admin', adminRoutes);
 
+app.get('/api/health', (req, res) => {
+    res.json({ status: 'ok', service: 'CS 308 Marketplace API' });
+});
+
 app.get('/', (req, res) => {
     res.send('Server is running: CS 308 Marketplace API');
 });
