@@ -137,8 +137,9 @@ const ProductDetail = () => {
   const currentUserId = user?.user?.id || user?.id;
   const visibleReviews = reviews.filter(r => r.status === 'approved' || r.user_id === currentUserId);
   const approvedReviews = reviews.filter(r => r.status === 'approved');
-  const avgRating = approvedReviews.length > 0
-    ? (approvedReviews.reduce((a, b) => a + b.rating, 0) / approvedReviews.length).toFixed(1)
+  // avgRating includes ALL reviews (pending + approved) so rating is immediately visible after submission
+  const avgRating = reviews.length > 0
+    ? (reviews.reduce((a, b) => a + b.rating, 0) / reviews.length).toFixed(1)
     : null;
 
   const abbrevName = (name) => {
