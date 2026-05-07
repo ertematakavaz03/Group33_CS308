@@ -7,11 +7,10 @@ router.get('/', async (req, res) => {
         const { rows } = await req.db.query(`
             SELECT p.*,
                    COALESCE(ROUND(AVG(r.rating)::numeric, 1), 0) AS average_rating,
-                   COUNT(r.id)::int AS review_count
+                   COUNT(CASE WHEN r.status = 'approved' THEN 1 END)::int AS review_count
             FROM products p
             LEFT JOIN reviews r
               ON r.product_id = p.id
-             AND r.status = 'approved'
             GROUP BY p.id
             ORDER BY p.created_at DESC
         `);

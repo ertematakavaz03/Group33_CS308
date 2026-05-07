@@ -68,6 +68,9 @@ describe('GET /api/products/:id/reviews', () => {
 
 describe('POST /api/products/:id/reviews', () => {
     test('successfully submits a review with pending status', async () => {
+        // First call: purchase verification check
+        mockDb.query.mockResolvedValueOnce({ rows: [{ '?column?': 1 }] });
+        // Second call: insert review
         mockDb.query.mockResolvedValueOnce({
             rows: [{ id: 1, product_id: 1, user_id: 2, rating: 4, comment: 'Good', status: 'pending' }]
         });
@@ -80,6 +83,19 @@ describe('POST /api/products/:id/reviews', () => {
 
         expect(res.status).toBe(201);
         expect(res.body.status).toBe('pending');
+    });
+
+    test('returns 403 if user has not purchased the product', async () => {
+        // Purchase check returns empty (not purchased)
+        mockDb.query.mockResolvedValueOnce({ rows: [] });
+
+        const res = await request(app).post('/api/products/1/reviews').send({
+            user_id: 2,
+            rating: 4,
+            comment: 'I have not bought this'
+        });
+
+        expect(res.status).toBe(403);
     });
 
     test('returns 400 if rating is missing', async () => {
