@@ -6,8 +6,8 @@ router.get('/', async (req, res) => {
     try {
         const { rows } = await req.db.query(`
             SELECT p.*,
-                   COALESCE(ROUND(AVG(r.rating)::numeric, 1), 0) AS average_rating,
-                   COUNT(CASE WHEN r.status = 'approved' THEN 1 END)::int AS review_count
+                   COALESCE(ROUND(AVG(CASE WHEN r.status != 'rejected' THEN r.rating END)::numeric, 1), 0) AS average_rating,
+                   COUNT(CASE WHEN r.status != 'rejected' THEN 1 END)::int AS review_count
             FROM products p
             LEFT JOIN reviews r
               ON r.product_id = p.id
@@ -30,20 +30,20 @@ router.post('/checkout', async (req, res) => {
 
     try {
         await req.db.query('BEGIN'); // Start transaction
-        
+
         for (const item of items) {
             // Subtract stock safely using SQL logic. Only proceeds if stock >= checkout amount.
             const result = await req.db.query(
                 'UPDATE products SET stock = stock - $1 WHERE id = $2 AND stock >= $1 RETURNING id',
                 [item.quantity, item.id]
             );
-            
+
             if (result.rows.length === 0) {
                 await req.db.query('ROLLBACK');
                 return res.status(400).json({ error: `Not enough stock available for one or more items.` });
             }
         }
-        
+
         await req.db.query('COMMIT');
         res.json({ message: 'Checkout successful, stock reduced' });
     } catch (err) {
@@ -54,15 +54,15 @@ router.post('/checkout', async (req, res) => {
 });
 
 router.get('/:id', async (req, res) => {
-  const { id } = req.params;
-  try {
-    const result = await req.db.query('SELECT * FROM products WHERE id = $1', [id]);
-    if (result.rows.length === 0) return res.status(404).json({ error: 'Not found' });
-    res.json(result.rows[0]);
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Server error' });
-  }
+    const { id } = req.params;
+    try {
+        const result = await req.db.query('SELECT * FROM products WHERE id = $1', [id]);
+        if (result.rows.length === 0) return res.status(404).json({ error: 'Not found' });
+        res.json(result.rows[0]);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Server error' });
+    }
 });
 
 // Get reviews for a product
