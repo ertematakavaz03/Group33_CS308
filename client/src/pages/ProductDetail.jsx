@@ -45,6 +45,7 @@ const ProductDetail = () => {
         .then((res) => res.json())
         .then((orders) => {
           const purchased = Array.isArray(orders) && orders.some((order) =>
+            order.status === 'delivered' &&
             order.items?.some((item) => String(item.product_id || item.id) === String(id))
           );
           setHasPurchased(purchased);
@@ -69,6 +70,7 @@ const ProductDetail = () => {
         setReviewStatus("Your review has been submitted and is shown below.");
         setReviewForm({ rating: 5, comment: "" });
         setShowReviewForm(false);
+        window.dispatchEvent(new Event('reviewUpdated'));
       } else {
         setReviewStatus(data.error || "Failed to submit review.");
       }
@@ -135,13 +137,11 @@ const ProductDetail = () => {
   const isOutOfStock = product.stock <= 0;
   const isLowStock = product.stock > 0 && product.stock <= 5;
   const currentUserId = user?.user?.id || user?.id;
-  const validReviews = reviews.filter(r => r.status !== 'rejected');
-  const visibleReviews = validReviews.filter(r => r.status === 'approved' || r.user_id === currentUserId);
-  const approvedReviews = reviews.filter(r => r.status === 'approved');
-  // avgRating includes pending + approved reviews, but excludes rejected ones
-  const avgRating = validReviews.length > 0
-    ? (validReviews.reduce((a, b) => a + b.rating, 0) / validReviews.length).toFixed(1)
+  // All reviews count toward the star average regardless of approval status
+  const avgRating = reviews.length > 0
+    ? (reviews.reduce((a, b) => a + b.rating, 0) / reviews.length).toFixed(1)
     : null;
+  const visibleReviews = reviews.filter(r => r.status === 'approved' || r.user_id === currentUserId);
 
   const abbrevName = (name) => {
     if (!name) return "User";
@@ -153,7 +153,7 @@ const ProductDetail = () => {
   const tabs = [
     { key: 'description', label: 'Description' },
     { key: 'specifications', label: 'Specifications' },
-    { key: 'reviews', label: `Reviews (${validReviews.length})` },
+    { key: 'reviews', label: `Reviews (${reviews.length})` },
   ];
 
   const hasSpecs = product.warranty || product.distributor || product.serial_no || product.model || product.category;
@@ -301,7 +301,7 @@ const ProductDetail = () => {
               <span style={{ fontWeight: "800", color: "#111", fontSize: "1rem" }}>
                 {avgRating || "No ratings yet"}
               </span>
-              <span style={{ color: "#9ca3af", fontSize: "0.85rem" }}>({validReviews.length} reviews)</span>
+              <span style={{ color: "#9ca3af", fontSize: "0.85rem" }}>({reviews.length} reviews)</span>
               <button
                 onClick={handleSeeReviews}
                 style={{ background: "none", border: "none", color: "#b91c1c", fontSize: "0.82rem", fontWeight: "700", cursor: "pointer", padding: 0, textDecoration: "underline" }}
@@ -427,7 +427,7 @@ const ProductDetail = () => {
                       Customer Reviews
                       {avgRating && <span style={{ marginLeft: "0.75rem", color: "#fbbf24", fontWeight: "700" }}>★ {avgRating}</span>}
                     </h3>
-                    <p style={{ margin: "3px 0 0", fontSize: "0.82rem", color: "#9ca3af" }}>{validReviews.length} review{validReviews.length !== 1 ? 's' : ''}</p>
+                    <p style={{ margin: "3px 0 0", fontSize: "0.82rem", color: "#9ca3af" }}>{reviews.length} review{reviews.length !== 1 ? 's' : ''}</p>
                   </div>
                   {hasPurchased && !showReviewForm && (
                     <button
@@ -526,9 +526,12 @@ const ProductDetail = () => {
                         <div style={{ fontSize: "0.75rem", color: "#9ca3af", marginBottom: "0.75rem", fontWeight: "500" }}>
                           {new Date(r.created_at).toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric" })}
                         </div>
-                        {/* Comment */}
-                        {r.comment && (
+                        {/* Comment — only shown after admin approval */}
+                        {r.comment && r.status === 'approved' && (
                           <p style={{ fontSize: "0.92rem", color: "#374151", margin: 0, lineHeight: 1.65 }}>{r.comment}</p>
+                        )}
+                        {r.status === 'pending' && r.user_id === currentUserId && (
+                          <p style={{ fontSize: "0.82rem", color: "#d97706", margin: 0, fontStyle: "italic" }}>Your comment is awaiting admin approval.</p>
                         )}
                       </div>
                     ))}

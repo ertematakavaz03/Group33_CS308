@@ -113,6 +113,8 @@ const Dashboard = () => {
       }
     };
     fetchProducts();
+    window.addEventListener('reviewUpdated', fetchProducts);
+    return () => window.removeEventListener('reviewUpdated', fetchProducts);
   }, []);
 
   useEffect(() => {

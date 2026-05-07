@@ -45,6 +45,25 @@ const Signup = () => {
 
       setError('');
       localStorage.setItem('user', JSON.stringify(data));
+
+      const userId = data.user?.id || data.id;
+      const guestCart = localStorage.getItem('guest_cart');
+      if (guestCart && userId) {
+        try {
+          const parsedCart = JSON.parse(guestCart);
+          if (parsedCart.length > 0) {
+            await fetch(`/api/cart/${userId}/sync`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ cartItems: parsedCart })
+            });
+          }
+          localStorage.removeItem('guest_cart');
+        } catch {
+          // cart sync failure shouldn't block signup
+        }
+      }
+
       window.dispatchEvent(new Event('userChanged'));
       navigate('/');
     } catch {

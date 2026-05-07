@@ -6,8 +6,8 @@ router.get('/', async (req, res) => {
     try {
         const { rows } = await req.db.query(`
             SELECT p.*,
-                   COALESCE(ROUND(AVG(CASE WHEN r.status != 'rejected' THEN r.rating END)::numeric, 1), 0) AS average_rating,
-                   COUNT(CASE WHEN r.status != 'rejected' THEN 1 END)::int AS review_count
+                   COALESCE(ROUND(AVG(r.rating)::numeric, 1), 0) AS average_rating,
+                   COUNT(r.rating)::int AS review_count
             FROM products p
             LEFT JOIN reviews r
               ON r.product_id = p.id
@@ -70,9 +70,9 @@ router.get('/:id/reviews', async (req, res) => {
     const { id } = req.params;
     try {
         const result = await req.db.query(
-            `SELECT r.id, r.rating, r.comment, r.status, r.created_at, u.name as user_name 
-             FROM reviews r 
-             JOIN users u ON r.user_id = u.id 
+            `SELECT r.id, r.user_id, r.rating, r.comment, r.status, r.created_at, u.name as user_name
+             FROM reviews r
+             JOIN users u ON r.user_id = u.id
              WHERE r.product_id = $1
              ORDER BY r.created_at DESC`,
             [id]
@@ -97,12 +97,12 @@ router.post('/:id/reviews', async (req, res) => {
         const purchaseCheck = await req.db.query(
             `SELECT 1 FROM order_items oi
              JOIN orders o ON oi.order_id = o.id
-             WHERE o.user_id = $1 AND oi.product_id = $2
+             WHERE o.user_id = $1 AND oi.product_id = $2 AND o.status = 'delivered'
              LIMIT 1`,
             [user_id, id]
         );
         if (purchaseCheck.rows.length === 0) {
-            return res.status(403).json({ error: 'You can only review products you have purchased.' });
+            return res.status(403).json({ error: 'You can only review products that have been delivered to you.' });
         }
 
         const result = await req.db.query(
