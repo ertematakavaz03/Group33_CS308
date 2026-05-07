@@ -8,6 +8,22 @@ router.post('/checkout', async (req, res) => {
   try {
     const { userId, userEmail, userName, items, totalAmount, shippingAddressId, billingAddressId } = req.body;
 
+    if (!userId || !userEmail || !Array.isArray(items) || items.length === 0) {
+      return res.status(400).json({ error: 'Checkout requires a user, email, and at least one item.' });
+    }
+
+    const hasInvalidItem = items.some((item) => {
+      const productId = item?.id || item?.product_id;
+      return !Number.isInteger(productId) ||
+             !Number.isInteger(item?.quantity) ||
+             item.quantity < 1 ||
+             Number(item?.price) < 0;
+    });
+
+    if (hasInvalidItem) {
+      return res.status(400).json({ error: 'Checkout items must include a product id, positive quantity, and valid price.' });
+    }
+
     await req.db.query('BEGIN');
 
     // decrease stock
