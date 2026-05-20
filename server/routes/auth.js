@@ -4,18 +4,6 @@ const bcrypt = require('bcrypt');
 
 const SALT_ROUNDS = 10;
 
-// for admin to see all user
-router.get('/users', async (req, res) => {
-    try {
-        const result = await req.db.query(
-            'SELECT id, name, email, phone, role, created_at FROM users ORDER BY created_at DESC'
-        );
-        res.json(result.rows);
-    } catch (err) {
-        console.error('Error fetching users:', err);
-        res.status(500).json({ error: 'Internal server error' });
-    }
-});
 
 // verify if user still exists
 router.get('/verify/:id', async (req, res) => {

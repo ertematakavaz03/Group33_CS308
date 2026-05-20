@@ -18,7 +18,7 @@ const AdminDashboard = () => {
 
   const fetchAll = useCallback(() => {
     fetch("http://localhost:5001/api/products").then(r => r.json()).then(setProducts);
-    fetch("http://localhost:5001/api/orders")
+    fetch("http://localhost:5001/api/admin/orders", { headers: { Authorization: `Bearer ${token}` } })
       .then(r => r.json())
       .then(setOrders)
       .catch(console.error);
@@ -57,9 +57,9 @@ const AdminDashboard = () => {
 
   const handleUpdateOrderStatus = async (orderId, newStatus) => {
     try {
-      const res = await fetch(`http://localhost:5001/api/orders/${orderId}/status`, {
+      const res = await fetch(`http://localhost:5001/api/admin/orders/${orderId}/status`, {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({ status: newStatus })
       });
   
