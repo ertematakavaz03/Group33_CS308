@@ -18,12 +18,12 @@ const AdminDashboard = () => {
 
   const fetchAll = useCallback(() => {
     fetch("http://localhost:5001/api/products").then(r => r.json()).then(setProducts);
-    fetch("http://localhost:5001/api/admin/orders", { headers: { Authorization: `Bearer ${token}` } })
+    fetch("http://localhost:5002/api/admin/orders", { headers: { Authorization: `Bearer ${token}` } })
       .then(r => r.json())
       .then(setOrders)
       .catch(console.error);
-    fetch("http://localhost:5001/api/admin/users", { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()).then(setUsers).catch(() => { });
-    fetch("http://localhost:5001/api/admin/reviews", { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()).then(setReviews).catch(() => { });
+    fetch("http://localhost:5002/api/admin/users", { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()).then(setUsers).catch(() => { });
+    fetch("http://localhost:5002/api/admin/reviews", { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()).then(setReviews).catch(() => { });
   }, [token]);
 
   useEffect(() => {
@@ -37,7 +37,7 @@ const AdminDashboard = () => {
 
   const handleSubmitProduct = async (e) => {
     e.preventDefault();
-    const url = editProduct ? `http://localhost:5001/api/admin/products/${editProduct.id}` : "http://localhost:5001/api/admin/products";
+    const url = editProduct ? `http://localhost:5002/api/admin/products/${editProduct.id}` : "http://localhost:5002/api/admin/products";
     const method = editProduct ? "PUT" : "POST";
     const res = await fetch(url, {
       method,
@@ -49,7 +49,7 @@ const AdminDashboard = () => {
 
   const handleDelete = async (id) => {
     if (!window.confirm("Delete this product?")) return;
-    await fetch(`http://localhost:5001/api/admin/products/${id}`, { method: "DELETE", headers: { Authorization: `Bearer ${token}` } });
+    await fetch(`http://localhost:5002/api/admin/products/${id}`, { method: "DELETE", headers: { Authorization: `Bearer ${token}` } });
     fetchAll();
   };
 
@@ -57,7 +57,7 @@ const AdminDashboard = () => {
 
   const handleUpdateOrderStatus = async (orderId, newStatus) => {
     try {
-      const res = await fetch(`http://localhost:5001/api/admin/orders/${orderId}/status`, {
+      const res = await fetch(`http://localhost:5002/api/admin/orders/${orderId}/status`, {
         method: "PUT",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({ status: newStatus })
@@ -77,7 +77,7 @@ const AdminDashboard = () => {
 
   const handleUpdateReviewStatus = async (reviewId, newStatus) => {
     try {
-      const res = await fetch(`http://localhost:5001/api/admin/reviews/${reviewId}/status`, {
+      const res = await fetch(`http://localhost:5002/api/admin/reviews/${reviewId}/status`, {
         method: "PUT",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({ status: newStatus })
