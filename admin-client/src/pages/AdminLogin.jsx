@@ -29,7 +29,7 @@ const AdminLogin = () => {
       {/* Back to Home */}
       <div style={{ position: "absolute", top: "1.25rem", left: "1.5rem" }}>
         <button
-          onClick={() => navigate("/")}
+          onClick={() => window.location.href = "http://localhost:5173/"}
           style={{
             display: "inline-flex", alignItems: "center", gap: "6px",
             background: "#fff", border: "1px solid #E5E7EB", borderRadius: "10px",

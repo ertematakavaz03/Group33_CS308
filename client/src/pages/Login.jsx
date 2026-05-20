@@ -19,12 +19,7 @@ const Login = () => {
       return;
     }
 
-    if (formData.email === 'admin@pazaryolu.com' && formData.password === 'admin123') {
-      localStorage.setItem('adminToken', 'pazaryolu-admin-secret-token');
-      localStorage.removeItem('user');
-      navigate('/admin/dashboard');
-      return;
-    }
+
 
     try {
       const response = await fetch('/api/auth/login', {
@@ -130,26 +125,7 @@ const Login = () => {
           </div>
         </div>
 
-        {/* Admin Login — same width, directly below */}
-        <div style={{
-          background: "#fff", border: "1px solid #E5E7EB", borderRadius: "12px",
-          padding: "0.8rem 2rem", textAlign: "center", marginTop: "0.75rem",
-          boxShadow: "0 1px 4px rgba(0,0,0,0.05)",
-          width: "100%", maxWidth: "420px", boxSizing: "border-box",
-        }}>
-          <span style={{ fontSize: "0.83rem", color: "#9CA3AF" }}>Are you an admin? </span>
-          <button
-            type="button"
-            onClick={() => navigate('/admin')}
-            style={{
-              background: "none", border: "none", padding: 0,
-              color: "var(--pazaryolu-red)", fontWeight: "700",
-              fontSize: "0.83rem", cursor: "pointer",
-            }}
-          >
-            Admin Login
-          </button>
-        </div>
+
       </div>
     </div>
   );

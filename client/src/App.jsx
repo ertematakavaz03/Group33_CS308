@@ -12,8 +12,6 @@ import Orders from "./pages/Orders";
 import Footer from './components/Footer';
 import './App.css';
 import ProductDetail from './pages/ProductDetail';
-import AdminLogin from './pages/AdminLogin';
-import AdminDashboard from './pages/AdminDashboard';
 import MyAccount from './pages/myaccount/MyAccount';
 import AccountInfo from './pages/myaccount/AccountInfo';
 import MyOrders from './pages/myaccount/MyOrders';
@@ -61,8 +59,7 @@ function App() {
             <Route path="/checkout" element={<Checkout />} />
             <Route path="/orders" element={<Orders />} />
             <Route path="/product/:id" element={<ProductDetail />} />
-            <Route path="/admin" element={<AdminLogin />} />
-            <Route path="/admin/dashboard" element={<AdminDashboard />} />
+
             <Route path="/myaccount" element={<MyAccount />}>
               <Route path="info" element={<AccountInfo />} />
               <Route path="myorders" element={<MyOrders />} />
