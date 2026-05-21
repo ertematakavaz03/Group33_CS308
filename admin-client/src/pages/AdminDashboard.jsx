@@ -180,7 +180,9 @@ const AdminDashboard = () => {
           <>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem" }}>
               <h2 style={{ margin: 0, fontWeight: "800" }}>Products ({products.length})</h2>
+              {adminRole === "product_manager" && (
               <button onClick={() => { resetForm(); setEditProduct(null); setShowAddForm(true); }} style={{ background: "#b91c1c", color: "#fff", border: "none", padding: "0.6rem 1.2rem", borderRadius: "8px", cursor: "pointer", fontWeight: "700" }}>+ Add Product</button>
+            )}
             </div>
 
             {/* Add/Edit Form */}
@@ -254,9 +256,16 @@ const AdminDashboard = () => {
                         <span style={{ background: p.stock <= 0 ? "#fee2e2" : p.stock <= 5 ? "#fef3c7" : "#dcfce7", color: p.stock <= 0 ? "#dc2626" : p.stock <= 5 ? "#d97706" : "#16a34a", padding: "2px 10px", borderRadius: "20px", fontSize: "0.8rem", fontWeight: "700" }}>{p.stock}</span>
                       </td>
                       <td style={{ padding: "0.7rem 1rem", whiteSpace: "nowrap" }}>
-                        <button onClick={() => openEdit(p)} style={{ background: "#f3f4f6", border: "none", padding: "0.4rem 0.9rem", borderRadius: "6px", cursor: "pointer", fontWeight: "700", marginRight: "0.4rem" }}>Edit</button>
-                        <button onClick={() => openDiscount(p)} style={{ background: "#fef3c7", color: "#d97706", border: "none", padding: "0.4rem 0.9rem", borderRadius: "6px", cursor: "pointer", fontWeight: "700", marginRight: "0.4rem" }}>Discount</button>
-                        <button onClick={() => handleDelete(p.id)} style={{ background: "#fee2e2", color: "#dc2626", border: "none", padding: "0.4rem 0.9rem", borderRadius: "6px", cursor: "pointer", fontWeight: "700" }}>Delete</button>
+                      {adminRole === "product_manager" && (
+  <>
+    <button onClick={() => openEdit(p)} style={{ background: "#f3f4f6", border: "none", padding: "0.4rem 0.9rem", borderRadius: "6px", cursor: "pointer", fontWeight: "700", marginRight: "0.4rem" }}>Edit</button>
+    <button onClick={() => handleDelete(p.id)} style={{ background: "#fee2e2", color: "#dc2626", border: "none", padding: "0.4rem 0.9rem", borderRadius: "6px", cursor: "pointer", fontWeight: "700" }}>Delete</button>
+  </>
+)}
+
+{adminRole === "sales_manager" && (
+  <button onClick={() => openDiscount(p)} style={{ background: "#fef3c7", color: "#d97706", border: "none", padding: "0.4rem 0.9rem", borderRadius: "6px", cursor: "pointer", fontWeight: "700" }}>Discount</button>
+)}
                       </td>
                     </tr>
                   ))}
