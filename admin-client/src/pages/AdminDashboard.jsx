@@ -7,7 +7,7 @@ const getTabsByRole = (role) => {
   }
 
   if (role === "sales_manager") {
-    return ["Products", "Orders"];
+    return ["Products", "Orders", "Revenue"];
   }
 
   return [];
@@ -156,7 +156,13 @@ const AdminDashboard = () => {
     <div style={{ minHeight: "100vh", background: "#f3f4f6" }}>
       {/* Header */}
       <div style={{ background: "#b91c1c", padding: "1rem 2rem", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <h1 style={{ color: "#fff", fontWeight: "800", fontSize: "1.4rem", margin: 0 }}>PazarYolu Admin</h1>
+      <h1 style={{ color: "#fff", fontWeight: "800", fontSize: "1.4rem", margin: 0 }}>
+  {adminRole === "product_manager"
+    ? "PazarYolu Product Manager"
+    : adminRole === "sales_manager"
+    ? "PazarYolu Sales Manager"
+    : "PazarYolu Admin"}
+</h1>
         <button onClick={handleLogout} style={{ background: "rgba(255,255,255,0.2)", border: "none", color: "#fff", padding: "0.5rem 1.2rem", borderRadius: "8px", cursor: "pointer", fontWeight: "700" }}>Logout</button>
       </div>
 
@@ -308,6 +314,61 @@ const AdminDashboard = () => {
           </>
         )}
 
+        {/* REVENUE TAB */}
+{activeTab === "Revenue" && (
+  <>
+    <h2 style={{ marginTop: 0, fontWeight: "800" }}>
+      Sales Analytics
+    </h2>
+
+    <div
+      style={{
+        display: "grid",
+        gridTemplateColumns: "repeat(3, 1fr)",
+        gap: "1rem",
+        marginTop: "1.5rem"
+      }}
+    >
+      <div style={analyticsCard}>
+        <h3>Total Revenue</h3>
+        <p style={analyticsValue}>
+          $
+          {orders
+            .reduce(
+              (sum, order) =>
+                sum + Number(order.total_amount || 0),
+              0
+            )
+            .toFixed(2)}
+        </p>
+      </div>
+
+      <div style={analyticsCard}>
+        <h3>Total Orders</h3>
+        <p style={analyticsValue}>
+          {orders.length}
+        </p>
+      </div>
+
+      <div style={analyticsCard}>
+        <h3>Average Order Value</h3>
+        <p style={analyticsValue}>
+          $
+          {orders.length > 0
+            ? (
+                orders.reduce(
+                  (sum, order) =>
+                    sum +
+                    Number(order.total_amount || 0),
+                  0
+                ) / orders.length
+              ).toFixed(2)
+            : "0.00"}
+        </p>
+      </div>
+    </div>
+  </>
+)}
         {/* USERS TAB */}
         {activeTab === "Users" && (
           <>
@@ -466,6 +527,19 @@ const AdminDashboard = () => {
   );
 };
 
+const analyticsCard = {
+  background: "#f9fafb",
+  padding: "1.5rem",
+  borderRadius: "16px",
+  border: "1px solid #e5e7eb",
+};
+
+const analyticsValue = {
+  fontSize: "2rem",
+  fontWeight: "800",
+  color: "#b91c1c",
+  marginTop: "1rem",
+};
 const fInputStyle = { padding: "0.6rem 0.8rem", borderRadius: "8px", border: "1px solid #e5e7eb", fontSize: "0.9rem", width: "100%", boxSizing: "border-box" };
 
 export default AdminDashboard;
