@@ -1,7 +1,17 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
-const tabs = ["Products", "Orders", "Users", "Reviews"];
+const getTabsByRole = (role) => {
+  if (role === "product_manager") {
+    return ["Products", "Orders", "Reviews"];
+  }
+
+  if (role === "sales_manager") {
+    return ["Products", "Orders"];
+  }
+
+  return [];
+};
 
 const AdminDashboard = () => {
   const navigate = useNavigate();
@@ -17,6 +27,8 @@ const AdminDashboard = () => {
   const [discountForm, setDiscountForm] = useState({ discount_percentage: "", discount_start: "", discount_end: "" });
 
   const token = localStorage.getItem("adminToken");
+  const adminRole = localStorage.getItem("adminRole");
+  const tabs = getTabsByRole(adminRole);
 
   const fetchAll = useCallback(() => {
     fetch("http://localhost:5002/api/admin/products", { headers: { Authorization: `Bearer ${token}` } })
@@ -25,7 +37,6 @@ const AdminDashboard = () => {
       .then(r => r.json())
       .then(setOrders)
       .catch(console.error);
-    fetch("http://localhost:5002/api/admin/users", { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()).then(setUsers).catch(() => { });
     fetch("http://localhost:5002/api/admin/reviews", { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()).then(setReviews).catch(() => { });
   }, [token]);
 
