@@ -19,10 +19,13 @@ const fmt = {
 
 const MyOrders = () => {
   const navigate = useNavigate();
-  const [orders, setOrders]     = useState([]);
-  const [loading, setLoading]   = useState(true);
-  const [error, setError]       = useState(null);
-  const [expanded, setExpanded] = useState(null);
+  const [orders, setOrders]       = useState([]);
+  const [loading, setLoading]     = useState(true);
+  const [error, setError]         = useState(null);
+  const [expanded, setExpanded]   = useState(null);
+  const [confirmingId, setConfirmingId] = useState(null);
+  const [cancellingId, setCancellingId] = useState(null);
+  const [cancelError, setCancelError]   = useState("");
 
   const user        = JSON.parse(localStorage.getItem("user") || "null");
   const currentUser = user?.user || user;
@@ -36,6 +39,29 @@ const MyOrders = () => {
   }, [currentUser?.id]);
 
   const toggle = (id) => setExpanded((prev) => (prev === id ? null : id));
+
+  const handleCancel = async (orderId) => {
+    setCancellingId(orderId);
+    setCancelError("");
+    try {
+      const res = await fetch(`http://localhost:5001/api/orders/${orderId}/cancel`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId: currentUser.id })
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok) {
+        setOrders((prev) => prev.map((o) => o.id === orderId ? { ...o, status: "cancelled" } : o));
+        setConfirmingId(null);
+      } else {
+        setCancelError(data.error || "Failed to cancel order.");
+      }
+    } catch {
+      setCancelError("Network error. Please try again.");
+    } finally {
+      setCancellingId(null);
+    }
+  };
 
   if (loading) return (
     <div style={{ display: "flex", flexDirection: "column", alignItems: "center", padding: "4rem" }}>
@@ -141,11 +167,60 @@ const MyOrders = () => {
                     </div>
                   </>
                 )}
+
+                {order.status === "processing" && (
+                  <div style={{ marginTop: "1.5rem", display: "flex", justifyContent: "flex-end" }}>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); setConfirmingId(order.id); setCancelError(""); }}
+                      style={{ background: "#FEF2F2", color: "#DC2626", border: "1.5px solid #FCA5A5", padding: "0.65rem 1.4rem", borderRadius: "10px", fontWeight: "700", fontSize: "0.875rem", cursor: "pointer" }}
+                    >
+                      Cancel Order
+                    </button>
+                  </div>
+                )}
               </div>
             )}
           </div>
         );
       })}
+
+      {confirmingId !== null && (
+        <div
+          onClick={() => !cancellingId && setConfirmingId(null)}
+          style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{ background: "#fff", borderRadius: "16px", padding: "1.75rem", width: "100%", maxWidth: "420px", boxShadow: "0 20px 50px rgba(0,0,0,0.25)" }}
+          >
+            <h3 style={{ margin: "0 0 0.5rem", fontWeight: "800", color: "#111", fontSize: "1.1rem" }}>Cancel Order #{confirmingId}?</h3>
+            <p style={{ margin: "0 0 1.25rem", color: "#6B7280", fontSize: "0.9rem", lineHeight: 1.5 }}>
+              This will return the items to stock and you will not be charged. This action cannot be undone.
+            </p>
+            {cancelError && (
+              <p style={{ background: "#FEF2F2", color: "#DC2626", padding: "0.6rem 0.85rem", borderRadius: "8px", margin: "0 0 1rem", fontSize: "0.85rem", fontWeight: "600" }}>
+                {cancelError}
+              </p>
+            )}
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: "0.6rem" }}>
+              <button
+                onClick={() => setConfirmingId(null)}
+                disabled={!!cancellingId}
+                style={{ background: "#E5E7EB", color: "#111", border: "none", padding: "0.65rem 1.2rem", borderRadius: "10px", fontWeight: "700", cursor: cancellingId ? "wait" : "pointer" }}
+              >
+                Keep Order
+              </button>
+              <button
+                onClick={() => handleCancel(confirmingId)}
+                disabled={!!cancellingId}
+                style={{ background: "#DC2626", color: "#fff", border: "none", padding: "0.65rem 1.4rem", borderRadius: "10px", fontWeight: "700", cursor: cancellingId ? "wait" : "pointer" }}
+              >
+                {cancellingId ? "Cancelling…" : "Yes, Cancel"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -167,6 +167,11 @@ const Dashboard = () => {
       showStockAlert(`No more stock available for "${product.name}".`);
       return;
     }
+    const cartProduct = {
+      ...product,
+      original_price: product.price,
+      price: product.is_on_discount ? product.effective_price : product.price,
+    };
     setCart((prevCart) => {
       const existingProduct = prevCart.find((item) => item.id === product.id);
       if (existingProduct) {
@@ -177,7 +182,7 @@ const Dashboard = () => {
             : item
         );
       }
-      return [...prevCart, { ...product, quantity: 1 }];
+      return [...prevCart, { ...cartProduct, quantity: 1 }];
     });
     setCartAnimating(true);
     setTimeout(() => setCartAnimating(false), 300);
@@ -265,9 +270,10 @@ const Dashboard = () => {
     return categoryMatches && (nameMatches || descriptionMatches);
   });
 
+  const priceFor = (p) => Number(p.is_on_discount ? p.effective_price : p.price);
   const sortedProducts = [...filteredProducts].sort((a, b) => {
-    if (sortOption === "price-low") return Number(a.price) - Number(b.price);
-    if (sortOption === "price-high") return Number(b.price) - Number(a.price);
+    if (sortOption === "price-low") return priceFor(a) - priceFor(b);
+    if (sortOption === "price-high") return priceFor(b) - priceFor(a);
     if (sortOption === "popularity" || activeCategory === "Top Sellers") return compareByPopularity(a, b);
     return new Date(b.created_at || 0) - new Date(a.created_at || 0);
   });
@@ -765,6 +771,11 @@ const Dashboard = () => {
                           onError={(e) => { e.target.style.display = 'none'; }}
                         />
                       )}
+                      {product.is_on_discount && (
+                        <span style={{ position: 'absolute', top: '8px', right: '8px', background: '#dc2626', color: '#fff', padding: '4px 10px', borderRadius: '999px', fontSize: '0.72rem', fontWeight: '800', zIndex: 15, boxShadow: '0 2px 8px rgba(220,38,38,0.35)' }}>
+                          -{parseFloat(product.discount_percentage).toFixed(0)}%
+                        </span>
+                      )}
                       <img
                         src={product.image_url || `https://via.placeholder.com/400x300?text=${encodeURIComponent(product.name)}`}
                         alt={product.name}
@@ -774,7 +785,14 @@ const Dashboard = () => {
                       <h3 className="product-title" title={product.name}>{product.name}</h3>
                       {renderRating(product)}
                       <div className="product-meta">
-                        <span className="product-price">${parseFloat(product.price).toFixed(2)}</span>
+                        {product.is_on_discount ? (
+                          <span className="product-price" style={{ display: 'flex', alignItems: 'baseline', gap: '6px', flexWrap: 'wrap' }}>
+                            <span>${parseFloat(product.effective_price).toFixed(2)}</span>
+                            <span style={{ color: '#9ca3af', textDecoration: 'line-through', fontSize: '0.78rem', fontWeight: '600' }}>${parseFloat(product.price).toFixed(2)}</span>
+                          </span>
+                        ) : (
+                          <span className="product-price">${parseFloat(product.price).toFixed(2)}</span>
+                        )}
                         {product.stock <= 0 ? (
                           <span className="stock-badge out">Out of Stock</span>
                         ) : product.stock <= 5 ? (

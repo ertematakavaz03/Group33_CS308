@@ -17,6 +17,8 @@ const ProductDetail = () => {
   const [activeTab, setActiveTab] = useState('description');
   const [showReviewForm, setShowReviewForm] = useState(false);
   const [showUserDropdown, setShowUserDropdown] = useState(false);
+  const [inWishlist, setInWishlist] = useState(false);
+  const [wishlistBusy, setWishlistBusy] = useState(false);
   const userDropdownRef = useRef(null);
   const userCloseTimer = useRef(null);
 
@@ -51,8 +53,39 @@ const ProductDetail = () => {
           setHasPurchased(purchased);
         })
         .catch(console.error);
+
+      fetch(`http://localhost:5001/api/wishlist/${userId}/has/${id}`)
+        .then((res) => res.json())
+        .then((data) => setInWishlist(!!data.inWishlist))
+        .catch(console.error);
     }
   }, [id]);
+
+  const handleToggleWishlist = async () => {
+    if (!user) { navigate('/login'); return; }
+    const userId = user?.user?.id || user?.id;
+    if (!userId || wishlistBusy) return;
+    setWishlistBusy(true);
+    const next = !inWishlist;
+    setInWishlist(next);
+    try {
+      if (next) {
+        await fetch(`http://localhost:5001/api/wishlist/${userId}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ productId: Number(id) })
+        });
+      } else {
+        await fetch(`http://localhost:5001/api/wishlist/${userId}/${id}`, { method: 'DELETE' });
+      }
+      window.dispatchEvent(new Event('wishlistChanged'));
+    } catch (err) {
+      console.error(err);
+      setInWishlist(!next);
+    } finally {
+      setWishlistBusy(false);
+    }
+  };
 
   const handleReviewSubmit = async (e) => {
     e.preventDefault();
@@ -99,7 +132,12 @@ const ProductDetail = () => {
         item.id === product.id ? { ...item, quantity: item.quantity + 1 } : item
       );
     } else {
-      updatedCart = [...existing, { ...product, quantity: 1 }];
+      const cartProduct = {
+        ...product,
+        original_price: product.price,
+        price: product.is_on_discount ? product.effective_price : product.price,
+      };
+      updatedCart = [...existing, { ...cartProduct, quantity: 1 }];
     }
     localStorage.setItem(cartKey, JSON.stringify(updatedCart));
     const userId = user?.user?.id || user?.id;
@@ -203,6 +241,7 @@ const ProductDetail = () => {
                       { to: '/myaccount/myorders', label: 'My Orders', icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z" /><line x1="3" y1="6" x2="21" y2="6" /><path d="M16 10a4 4 0 0 1-8 0" /></svg> },
                       { to: '/myaccount/myreviews', label: 'My Reviews', icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" /></svg> },
                       { to: '/myaccount/addresses', label: 'My Addresses', icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" /><circle cx="12" cy="10" r="3" /></svg> },
+                      { to: '/myaccount/wishlist', label: 'My Wishlist', icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" /></svg> },
                     ].map(({ to, label, icon }) => (
                       <Link key={to} to={to} onClick={() => setShowUserDropdown(false)}
                         style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '0.7rem 1rem', color: '#374151', fontWeight: '600', fontSize: '0.875rem', textDecoration: 'none', borderRadius: '8px', transition: 'background 0.12s' }}
@@ -311,9 +350,30 @@ const ProductDetail = () => {
             </div>
 
             {/* Price */}
-            <div style={{ fontSize: "2rem", fontWeight: "800", color: "#b91c1c" }}>
-              ${parseFloat(product.price).toFixed(2)}
-            </div>
+            {product.is_on_discount ? (
+              <div>
+                <div style={{ display: "flex", alignItems: "baseline", gap: "0.75rem", flexWrap: "wrap" }}>
+                  <span style={{ fontSize: "2rem", fontWeight: "800", color: "#b91c1c" }}>
+                    ${parseFloat(product.effective_price).toFixed(2)}
+                  </span>
+                  <span style={{ fontSize: "1.1rem", color: "#9ca3af", textDecoration: "line-through", fontWeight: "600" }}>
+                    ${parseFloat(product.price).toFixed(2)}
+                  </span>
+                  <span style={{ background: "#fee2e2", color: "#dc2626", padding: "4px 10px", borderRadius: "999px", fontSize: "0.78rem", fontWeight: "800" }}>
+                    -{parseFloat(product.discount_percentage).toFixed(0)}%
+                  </span>
+                </div>
+                {product.discount_end && (
+                  <div style={{ marginTop: "4px", fontSize: "0.75rem", color: "#6b7280", fontWeight: "600" }}>
+                    Ends {new Date(product.discount_end).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div style={{ fontSize: "2rem", fontWeight: "800", color: "#b91c1c" }}>
+                ${parseFloat(product.price).toFixed(2)}
+              </div>
+            )}
 
             {/* Stock badge */}
             <div>
@@ -343,21 +403,42 @@ const ProductDetail = () => {
               </div>
             )}
 
-            {/* Add to Cart */}
-            <button
-              onClick={handleAddToCart}
-              disabled={isOutOfStock}
-              style={{
-                width: "100%", padding: "1rem", border: "none", borderRadius: "12px",
-                fontSize: "1rem", fontWeight: "800", marginTop: "auto",
-                cursor: isOutOfStock ? "not-allowed" : "pointer",
-                background: isOutOfStock ? "#e5e7eb" : added ? "#16a34a" : "#b91c1c",
-                color: isOutOfStock ? "#9ca3af" : "#fff",
-                transition: "background 0.2s"
-              }}
-            >
-              {isOutOfStock ? "Unavailable" : added ? "✓ Added to Cart!" : "Add to Cart"}
-            </button>
+            {/* Add to Cart + Wishlist */}
+            <div style={{ display: "flex", gap: "0.6rem", marginTop: "auto" }}>
+              <button
+                onClick={handleAddToCart}
+                disabled={isOutOfStock}
+                style={{
+                  flex: 1, padding: "1rem", border: "none", borderRadius: "12px",
+                  fontSize: "1rem", fontWeight: "800",
+                  cursor: isOutOfStock ? "not-allowed" : "pointer",
+                  background: isOutOfStock ? "#e5e7eb" : added ? "#16a34a" : "#b91c1c",
+                  color: isOutOfStock ? "#9ca3af" : "#fff",
+                  transition: "background 0.2s"
+                }}
+              >
+                {isOutOfStock ? "Unavailable" : added ? "✓ Added to Cart!" : "Add to Cart"}
+              </button>
+              <button
+                onClick={handleToggleWishlist}
+                disabled={wishlistBusy}
+                title={inWishlist ? "Remove from wishlist" : "Add to wishlist"}
+                aria-label={inWishlist ? "Remove from wishlist" : "Add to wishlist"}
+                style={{
+                  width: "58px", padding: "1rem", borderRadius: "12px",
+                  border: `2px solid ${inWishlist ? "#b91c1c" : "#e5e7eb"}`,
+                  background: inWishlist ? "#fef2f2" : "#fff",
+                  color: inWishlist ? "#b91c1c" : "#9ca3af",
+                  cursor: wishlistBusy ? "wait" : "pointer",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  transition: "all 0.18s"
+                }}
+              >
+                <svg width="22" height="22" viewBox="0 0 24 24" fill={inWishlist ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
+                </svg>
+              </button>
+            </div>
           </div>
         </div>
 

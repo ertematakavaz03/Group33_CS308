@@ -21,6 +21,31 @@ router.post('/login', (req, res) => {
   res.status(401).json({ error: "Invalid credentials" });
 });
 
+// Products list (admin) — includes discount info + computed effective price
+router.get('/products', auth, async (req, res) => {
+  try {
+    const result = await req.db.query(
+      `SELECT p.*,
+              CASE
+                WHEN p.discount_percentage > 0
+                  AND (p.discount_start IS NULL OR p.discount_start <= NOW())
+                  AND (p.discount_end   IS NULL OR p.discount_end   >= NOW())
+                THEN ROUND(p.price * (1 - p.discount_percentage / 100), 2)
+                ELSE p.price
+              END AS effective_price,
+              CASE
+                WHEN p.discount_percentage > 0
+                  AND (p.discount_start IS NULL OR p.discount_start <= NOW())
+                  AND (p.discount_end   IS NULL OR p.discount_end   >= NOW())
+                THEN TRUE ELSE FALSE
+              END AS is_on_discount
+       FROM products p
+       ORDER BY p.created_at DESC`
+    );
+    res.json(result.rows);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 // Products CRUD
 router.post('/products', auth, async (req, res) => {
   const { name, model, serial_no, description, stock, price, warranty, distributor, category, image_url } = req.body;
@@ -48,6 +73,48 @@ router.delete('/products/:id', auth, async (req, res) => {
   try {
     await req.db.query('DELETE FROM products WHERE id=$1', [req.params.id]);
     res.json({ message: 'Deleted' });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// Set / update a product's discount (dynamic, date-ranged)
+router.put('/products/:id/discount', auth, async (req, res) => {
+  const { discount_percentage, discount_start, discount_end } = req.body;
+  const pct = Number(discount_percentage);
+  if (!Number.isFinite(pct) || pct < 0 || pct > 99) {
+    return res.status(400).json({ error: 'discount_percentage must be between 0 and 99' });
+  }
+  if (discount_start && discount_end && new Date(discount_start) > new Date(discount_end)) {
+    return res.status(400).json({ error: 'discount_start must be before discount_end' });
+  }
+  try {
+    const result = await req.db.query(
+      `UPDATE products
+         SET discount_percentage = $1,
+             discount_start = $2,
+             discount_end = $3
+       WHERE id = $4
+       RETURNING *`,
+      [pct, discount_start || null, discount_end || null, req.params.id]
+    );
+    if (result.rows.length === 0) return res.status(404).json({ error: 'Product not found' });
+    res.json(result.rows[0]);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// Clear a product's discount
+router.delete('/products/:id/discount', auth, async (req, res) => {
+  try {
+    const result = await req.db.query(
+      `UPDATE products
+         SET discount_percentage = 0,
+             discount_start = NULL,
+             discount_end = NULL
+       WHERE id = $1
+       RETURNING *`,
+      [req.params.id]
+    );
+    if (result.rows.length === 0) return res.status(404).json({ error: 'Product not found' });
+    res.json(result.rows[0]);
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 

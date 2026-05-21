@@ -192,4 +192,64 @@ router.get('/:id/invoice', async (req, res) => {
   }
 });
 
+// customer: cancel own order (only while in "processing" state)
+router.put('/:id/cancel', async (req, res) => {
+  const { id } = req.params;
+  const { userId } = req.body;
+
+  if (!Number.isInteger(Number(userId))) {
+    return res.status(400).json({ error: 'userId is required' });
+  }
+
+  try {
+    await req.db.query('BEGIN');
+
+    const orderResult = await req.db.query(
+      'SELECT id, user_id, status FROM orders WHERE id = $1 FOR UPDATE',
+      [id]
+    );
+    if (orderResult.rows.length === 0) {
+      await req.db.query('ROLLBACK');
+      return res.status(404).json({ error: 'Order not found' });
+    }
+    const order = orderResult.rows[0];
+    if (Number(order.user_id) !== Number(userId)) {
+      await req.db.query('ROLLBACK');
+      return res.status(403).json({ error: 'Not allowed to cancel this order' });
+    }
+    if (order.status !== 'processing') {
+      await req.db.query('ROLLBACK');
+      return res.status(400).json({ error: `Order cannot be cancelled in "${order.status}" state.` });
+    }
+
+    const itemsResult = await req.db.query(
+      'SELECT product_id, quantity FROM order_items WHERE order_id = $1',
+      [id]
+    );
+    for (const item of itemsResult.rows) {
+      if (item.product_id) {
+        await req.db.query(
+          `UPDATE products
+              SET stock = stock + $1,
+                  sales_count = GREATEST(sales_count - $1, 0)
+            WHERE id = $2`,
+          [item.quantity, item.product_id]
+        );
+      }
+    }
+
+    const updated = await req.db.query(
+      `UPDATE orders SET status = 'cancelled' WHERE id = $1 RETURNING *`,
+      [id]
+    );
+
+    await req.db.query('COMMIT');
+    res.json({ message: 'Order cancelled', order: updated.rows[0] });
+  } catch (err) {
+    try { await req.db.query('ROLLBACK'); } catch (_) {}
+    console.error('Error cancelling order:', err);
+    res.status(500).json({ error: 'Failed to cancel order' });
+  }
+});
+
 module.exports = router;

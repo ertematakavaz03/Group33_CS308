@@ -13,11 +13,14 @@ const AdminDashboard = () => {
   const [showAddForm, setShowAddForm] = useState(false);
   const [editProduct, setEditProduct] = useState(null);
   const [form, setForm] = useState({ name: "", model: "", serial_no: "", description: "", stock: "", price: "", warranty: "", distributor: "", category: "", image_url: "" });
+  const [discountProduct, setDiscountProduct] = useState(null);
+  const [discountForm, setDiscountForm] = useState({ discount_percentage: "", discount_start: "", discount_end: "" });
 
   const token = localStorage.getItem("adminToken");
 
   const fetchAll = useCallback(() => {
-    fetch("http://localhost:5001/api/products").then(r => r.json()).then(setProducts);
+    fetch("http://localhost:5002/api/admin/products", { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.json()).then(setProducts).catch(console.error);
     fetch("http://localhost:5002/api/admin/orders", { headers: { Authorization: `Bearer ${token}` } })
       .then(r => r.json())
       .then(setOrders)
@@ -25,6 +28,52 @@ const AdminDashboard = () => {
     fetch("http://localhost:5002/api/admin/users", { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()).then(setUsers).catch(() => { });
     fetch("http://localhost:5002/api/admin/reviews", { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()).then(setReviews).catch(() => { });
   }, [token]);
+
+  const toLocalInput = (iso) => {
+    if (!iso) return "";
+    const d = new Date(iso);
+    const pad = (n) => String(n).padStart(2, "0");
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  };
+
+  const openDiscount = (p) => {
+    setDiscountProduct(p);
+    setDiscountForm({
+      discount_percentage: p.discount_percentage ? String(p.discount_percentage) : "",
+      discount_start: toLocalInput(p.discount_start),
+      discount_end: toLocalInput(p.discount_end)
+    });
+  };
+
+  const handleSaveDiscount = async (e) => {
+    e.preventDefault();
+    const res = await fetch(`http://localhost:5002/api/admin/products/${discountProduct.id}/discount`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({
+        discount_percentage: Number(discountForm.discount_percentage) || 0,
+        discount_start: discountForm.discount_start || null,
+        discount_end: discountForm.discount_end || null
+      })
+    });
+    if (res.ok) {
+      setDiscountProduct(null);
+      fetchAll();
+    } else {
+      const data = await res.json().catch(() => ({}));
+      alert(data.error || "Failed to save discount");
+    }
+  };
+
+  const handleClearDiscount = async () => {
+    if (!window.confirm("Remove discount on this product?")) return;
+    await fetch(`http://localhost:5002/api/admin/products/${discountProduct.id}/discount`, {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    setDiscountProduct(null);
+    fetchAll();
+  };
 
   useEffect(() => {
     if (!token) { navigate("/admin"); return; }
@@ -152,7 +201,7 @@ const AdminDashboard = () => {
               <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.9rem" }}>
                 <thead>
                   <tr style={{ borderBottom: "2px solid #f3f4f6" }}>
-                    {["Image", "Name", "Category", "Price", "Stock", "Actions"].map(h => (
+                    {["Image", "Name", "Category", "Price", "Discount", "Stock", "Actions"].map(h => (
                       <th key={h} style={{ textAlign: "left", padding: "0.7rem 1rem", color: "#6b7280", fontWeight: "700", fontSize: "0.8rem", textTransform: "uppercase" }}>{h}</th>
                     ))}
                   </tr>
@@ -165,12 +214,31 @@ const AdminDashboard = () => {
                       </td>
                       <td style={{ padding: "0.7rem 1rem", fontWeight: "600" }}>{p.name}</td>
                       <td style={{ padding: "0.7rem 1rem", color: "#6b7280" }}>{p.category}</td>
-                      <td style={{ padding: "0.7rem 1rem", fontWeight: "700", color: "#b91c1c" }}>${parseFloat(p.price).toFixed(2)}</td>
+                      <td style={{ padding: "0.7rem 1rem" }}>
+                        {p.is_on_discount ? (
+                          <div style={{ display: "flex", flexDirection: "column" }}>
+                            <span style={{ fontWeight: "700", color: "#b91c1c" }}>${parseFloat(p.effective_price).toFixed(2)}</span>
+                            <span style={{ fontSize: "0.75rem", color: "#9ca3af", textDecoration: "line-through" }}>${parseFloat(p.price).toFixed(2)}</span>
+                          </div>
+                        ) : (
+                          <span style={{ fontWeight: "700", color: "#b91c1c" }}>${parseFloat(p.price).toFixed(2)}</span>
+                        )}
+                      </td>
+                      <td style={{ padding: "0.7rem 1rem" }}>
+                        {Number(p.discount_percentage) > 0 ? (
+                          <span style={{ background: p.is_on_discount ? "#fee2e2" : "#f3f4f6", color: p.is_on_discount ? "#dc2626" : "#9ca3af", padding: "2px 10px", borderRadius: "20px", fontSize: "0.78rem", fontWeight: "700" }}>
+                            -{parseFloat(p.discount_percentage).toFixed(0)}%{!p.is_on_discount ? " (scheduled)" : ""}
+                          </span>
+                        ) : (
+                          <span style={{ color: "#9ca3af", fontSize: "0.8rem" }}>—</span>
+                        )}
+                      </td>
                       <td style={{ padding: "0.7rem 1rem" }}>
                         <span style={{ background: p.stock <= 0 ? "#fee2e2" : p.stock <= 5 ? "#fef3c7" : "#dcfce7", color: p.stock <= 0 ? "#dc2626" : p.stock <= 5 ? "#d97706" : "#16a34a", padding: "2px 10px", borderRadius: "20px", fontSize: "0.8rem", fontWeight: "700" }}>{p.stock}</span>
                       </td>
-                      <td style={{ padding: "0.7rem 1rem" }}>
-                        <button onClick={() => openEdit(p)} style={{ background: "#f3f4f6", border: "none", padding: "0.4rem 0.9rem", borderRadius: "6px", cursor: "pointer", fontWeight: "700", marginRight: "0.5rem" }}>Edit</button>
+                      <td style={{ padding: "0.7rem 1rem", whiteSpace: "nowrap" }}>
+                        <button onClick={() => openEdit(p)} style={{ background: "#f3f4f6", border: "none", padding: "0.4rem 0.9rem", borderRadius: "6px", cursor: "pointer", fontWeight: "700", marginRight: "0.4rem" }}>Edit</button>
+                        <button onClick={() => openDiscount(p)} style={{ background: "#fef3c7", color: "#d97706", border: "none", padding: "0.4rem 0.9rem", borderRadius: "6px", cursor: "pointer", fontWeight: "700", marginRight: "0.4rem" }}>Discount</button>
                         <button onClick={() => handleDelete(p.id)} style={{ background: "#fee2e2", color: "#dc2626", border: "none", padding: "0.4rem 0.9rem", borderRadius: "6px", cursor: "pointer", fontWeight: "700" }}>Delete</button>
                       </td>
                     </tr>
@@ -308,6 +376,81 @@ const AdminDashboard = () => {
           </>
         )}
       </div>
+
+      {/* Discount Modal */}
+      {discountProduct && (
+        <div
+          onClick={() => setDiscountProduct(null)}
+          style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{ background: "#fff", borderRadius: "16px", padding: "1.75rem", width: "100%", maxWidth: "480px", boxShadow: "0 20px 50px rgba(0,0,0,0.25)" }}
+          >
+            <h3 style={{ margin: "0 0 4px", fontWeight: "800" }}>Set Discount</h3>
+            <p style={{ margin: "0 0 1.25rem", color: "#6b7280", fontSize: "0.85rem" }}>{discountProduct.name}</p>
+
+            <form onSubmit={handleSaveDiscount}>
+              <div style={{ marginBottom: "1rem" }}>
+                <label style={{ fontSize: "0.78rem", fontWeight: "700", color: "#6b7280", display: "block", marginBottom: "4px" }}>Percentage (0–99)</label>
+                <input
+                  type="number" min="0" max="99" step="0.01"
+                  value={discountForm.discount_percentage}
+                  onChange={(e) => setDiscountForm({ ...discountForm, discount_percentage: e.target.value })}
+                  required
+                  style={fInputStyle}
+                />
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem", marginBottom: "1rem" }}>
+                <div>
+                  <label style={{ fontSize: "0.78rem", fontWeight: "700", color: "#6b7280", display: "block", marginBottom: "4px" }}>Starts (optional)</label>
+                  <input
+                    type="datetime-local"
+                    value={discountForm.discount_start}
+                    onChange={(e) => setDiscountForm({ ...discountForm, discount_start: e.target.value })}
+                    style={fInputStyle}
+                  />
+                </div>
+                <div>
+                  <label style={{ fontSize: "0.78rem", fontWeight: "700", color: "#6b7280", display: "block", marginBottom: "4px" }}>Ends (optional)</label>
+                  <input
+                    type="datetime-local"
+                    value={discountForm.discount_end}
+                    onChange={(e) => setDiscountForm({ ...discountForm, discount_end: e.target.value })}
+                    style={fInputStyle}
+                  />
+                </div>
+              </div>
+              <p style={{ fontSize: "0.75rem", color: "#9ca3af", margin: "0 0 1.25rem" }}>
+                Leaving dates empty makes the discount active immediately and indefinitely.
+              </p>
+
+              <div style={{ display: "flex", justifyContent: "space-between", gap: "0.75rem" }}>
+                <button
+                  type="button" onClick={handleClearDiscount}
+                  style={{ background: "#fee2e2", color: "#dc2626", border: "none", padding: "0.65rem 1rem", borderRadius: "8px", cursor: "pointer", fontWeight: "700" }}
+                >
+                  Remove Discount
+                </button>
+                <div style={{ display: "flex", gap: "0.5rem" }}>
+                  <button
+                    type="button" onClick={() => setDiscountProduct(null)}
+                    style={{ background: "#e5e7eb", color: "#111", border: "none", padding: "0.65rem 1.2rem", borderRadius: "8px", cursor: "pointer", fontWeight: "700" }}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    style={{ background: "#b91c1c", color: "#fff", border: "none", padding: "0.65rem 1.4rem", borderRadius: "8px", cursor: "pointer", fontWeight: "700" }}
+                  >
+                    Save
+                  </button>
+                </div>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

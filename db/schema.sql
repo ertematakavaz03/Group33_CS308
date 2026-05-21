@@ -75,3 +75,15 @@ CREATE TABLE IF NOT EXISTS reviews (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     UNIQUE(user_id, product_id)
 );
+
+CREATE TABLE IF NOT EXISTS wishlist_items (
+    id SERIAL PRIMARY KEY,
+    user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    product_id INT NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(user_id, product_id)
+);
+
+ALTER TABLE products ADD COLUMN IF NOT EXISTS discount_percentage NUMERIC(5,2) DEFAULT 0;
+ALTER TABLE products ADD COLUMN IF NOT EXISTS discount_start TIMESTAMP;
+ALTER TABLE products ADD COLUMN IF NOT EXISTS discount_end TIMESTAMP;

@@ -366,14 +366,26 @@ const Cart = () => {
                     {item.name}
                   </h3>
 
-                  <div
-                    style={{
-                      fontSize: '1.5rem',
-                      fontWeight: '800',
-                      color: 'var(--pazaryolu-red)'
-                    }}
-                  >
-                    ${Number(item.price).toFixed(2)}
+                  <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem', flexWrap: 'wrap' }}>
+                    <div
+                      style={{
+                        fontSize: '1.5rem',
+                        fontWeight: '800',
+                        color: 'var(--pazaryolu-red)'
+                      }}
+                    >
+                      ${Number(item.price).toFixed(2)}
+                    </div>
+                    {item.original_price && Number(item.original_price) > Number(item.price) && (
+                      <>
+                        <span style={{ color: '#9ca3af', textDecoration: 'line-through', fontSize: '0.9rem', fontWeight: '600' }}>
+                          ${Number(item.original_price).toFixed(2)}
+                        </span>
+                        <span style={{ background: '#fee2e2', color: '#dc2626', padding: '2px 8px', borderRadius: '999px', fontSize: '0.7rem', fontWeight: '800' }}>
+                          -{Math.round((1 - Number(item.price) / Number(item.original_price)) * 100)}%
+                        </span>
+                      </>
+                    )}
                   </div>
                 </div>
 

@@ -7,7 +7,20 @@ router.get('/', async (req, res) => {
         const { rows } = await req.db.query(`
             SELECT p.*,
                    COALESCE(ROUND(AVG(r.rating)::numeric, 1), 0) AS average_rating,
-                   COUNT(r.rating)::int AS review_count
+                   COUNT(r.rating)::int AS review_count,
+                   CASE
+                     WHEN p.discount_percentage > 0
+                       AND (p.discount_start IS NULL OR p.discount_start <= NOW())
+                       AND (p.discount_end   IS NULL OR p.discount_end   >= NOW())
+                     THEN ROUND(p.price * (1 - p.discount_percentage / 100), 2)
+                     ELSE p.price
+                   END AS effective_price,
+                   CASE
+                     WHEN p.discount_percentage > 0
+                       AND (p.discount_start IS NULL OR p.discount_start <= NOW())
+                       AND (p.discount_end   IS NULL OR p.discount_end   >= NOW())
+                     THEN TRUE ELSE FALSE
+                   END AS is_on_discount
             FROM products p
             LEFT JOIN reviews r
               ON r.product_id = p.id
@@ -56,7 +69,24 @@ router.post('/checkout', async (req, res) => {
 router.get('/:id', async (req, res) => {
     const { id } = req.params;
     try {
-        const result = await req.db.query('SELECT * FROM products WHERE id = $1', [id]);
+        const result = await req.db.query(
+            `SELECT p.*,
+                    CASE
+                      WHEN p.discount_percentage > 0
+                        AND (p.discount_start IS NULL OR p.discount_start <= NOW())
+                        AND (p.discount_end   IS NULL OR p.discount_end   >= NOW())
+                      THEN ROUND(p.price * (1 - p.discount_percentage / 100), 2)
+                      ELSE p.price
+                    END AS effective_price,
+                    CASE
+                      WHEN p.discount_percentage > 0
+                        AND (p.discount_start IS NULL OR p.discount_start <= NOW())
+                        AND (p.discount_end   IS NULL OR p.discount_end   >= NOW())
+                      THEN TRUE ELSE FALSE
+                    END AS is_on_discount
+             FROM products p WHERE p.id = $1`,
+            [id]
+        );
         if (result.rows.length === 0) return res.status(404).json({ error: 'Not found' });
         res.json(result.rows[0]);
     } catch (err) {
