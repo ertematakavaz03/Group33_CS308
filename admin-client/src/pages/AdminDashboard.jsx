@@ -184,6 +184,92 @@ const AdminDashboard = () => {
               <button onClick={() => { resetForm(); setEditProduct(null); setShowAddForm(true); }} style={{ background: "#b91c1c", color: "#fff", border: "none", padding: "0.6rem 1.2rem", borderRadius: "8px", cursor: "pointer", fontWeight: "700" }}>+ Add Product</button>
             )}
             </div>
+            {adminRole === "product_manager" && products.filter(p => Number(p.stock) <= 5).length > 0 && (
+  <div
+    style={{
+      background: "#fff7ed",
+      border: "1px solid #fed7aa",
+      color: "#c2410c",
+      padding: "1rem",
+      borderRadius: "12px",
+      marginBottom: "1.5rem",
+    }}
+  >
+    <h3 style={{ marginTop: 0, marginBottom: "0.8rem" }}>
+      Low Stock Warning
+    </h3>
+
+    <div style={{ display: "flex", flexDirection: "column", gap: "0.6rem" }}>
+      {products
+        .filter(p => Number(p.stock) <= 5)
+        .map(p => (
+          <div
+            key={p.id}
+            style={{
+              background: "#fff",
+              padding: "0.7rem 1rem",
+              borderRadius: "8px",
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              border: "1px solid #fed7aa"
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", gap: "0.8rem" }}>
+  <img
+    src={p.image_url}
+    alt={p.name}
+    style={{
+      width: "45px",
+      height: "35px",
+      objectFit: "cover",
+      borderRadius: "6px",
+      background: "#f3f4f6"
+    }}
+    onError={e => e.target.style.display = "none"}
+  />
+
+  <div style={{ display: "flex", flexDirection: "column" }}>
+    <span style={{ fontWeight: "600" }}>
+      {p.name}
+    </span>
+
+    <button
+      onClick={() => openEdit(p)}
+      style={{
+        background: "#f3f4f6",
+        border: "none",
+        padding: "0.3rem 0.7rem",
+        borderRadius: "6px",
+        cursor: "pointer",
+        fontWeight: "700",
+        fontSize: "0.75rem",
+        marginTop: "0.3rem",
+        width: "fit-content"
+      }}
+    >
+      Edit
+    </button>
+  </div>
+</div>
+
+            <span
+              style={{
+                background: Number(p.stock) === 0 ? "#fee2e2" : "#fef3c7",
+                color: Number(p.stock) === 0 ? "#dc2626" : "#d97706",
+                padding: "4px 10px",
+                borderRadius: "20px",
+                fontSize: "0.8rem",
+                fontWeight: "700"
+              }}
+            >
+              Stock: {p.stock}
+            </span>
+          </div>
+        ))}
+    </div>
+  </div>
+)}
 
             {/* Add/Edit Form */}
             {showAddForm && (
