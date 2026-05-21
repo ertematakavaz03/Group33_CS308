@@ -15,12 +15,28 @@ const ADMINS = [
 ];
 
 const ADMIN_TOKEN = "pazaryolu-admin-secret-token";
+const adminSessions = {};
 
 // Auth middleware
 const auth = (req, res, next) => {
   const token = req.headers.authorization?.split(" ")[1];
-  if (token !== ADMIN_TOKEN) return res.status(401).json({ error: "Unauthorized" });
+
+  if (token !== ADMIN_TOKEN || !adminSessions[token]) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+
+  req.adminRole = adminSessions[token].role;
   next();
+};
+
+const requireRole = (...allowedRoles) => {
+  return (req, res, next) => {
+    if (!allowedRoles.includes(req.adminRole)) {
+      return res.status(403).json({ error: "Forbidden: insufficient role permission" });
+    }
+
+    next();
+  };
 };
 
 // Login
@@ -35,6 +51,11 @@ router.post('/login', (req, res) => {
     return res.status(401).json({ error: "Invalid credentials" });
   }
 
+  adminSessions[ADMIN_TOKEN] = {
+    username: admin.username,
+    role: admin.role
+  };
+  
   res.json({
     token: ADMIN_TOKEN,
     role: admin.role
@@ -67,7 +88,7 @@ router.get('/products', auth, async (req, res) => {
 });
 
 // Products CRUD
-router.post('/products', auth, async (req, res) => {
+router.post('/products', auth, requireRole("product_manager"), async (req, res) => {
   const { name, model, serial_no, description, stock, price, warranty, distributor, category, image_url } = req.body;
   try {
     const result = await req.db.query(
@@ -78,7 +99,7 @@ router.post('/products', auth, async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-router.put('/products/:id', auth, async (req, res) => {
+router.put('/products/:id', auth, requireRole("product_manager"), async (req, res) => {
   const { name, model, serial_no, description, stock, price, warranty, distributor, category, image_url } = req.body;
   try {
     const result = await req.db.query(
@@ -89,7 +110,7 @@ router.put('/products/:id', auth, async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-router.delete('/products/:id', auth, async (req, res) => {
+router.delete('/products/:id', auth, requireRole("product_manager"), async (req, res) => {
   try {
     await req.db.query('DELETE FROM products WHERE id=$1', [req.params.id]);
     res.json({ message: 'Deleted' });
@@ -97,7 +118,7 @@ router.delete('/products/:id', auth, async (req, res) => {
 });
 
 // Set / update a product's discount (dynamic, date-ranged)
-router.put('/products/:id/discount', auth, async (req, res) => {
+router.put('/products/:id/discount', auth, requireRole("sales_manager"), async (req, res) => {
   const { discount_percentage, discount_start, discount_end } = req.body;
   const pct = Number(discount_percentage);
   if (!Number.isFinite(pct) || pct < 0 || pct > 99) {
@@ -122,7 +143,7 @@ router.put('/products/:id/discount', auth, async (req, res) => {
 });
 
 // Clear a product's discount
-router.delete('/products/:id/discount', auth, async (req, res) => {
+router.delete('/products/:id/discount', auth, requireRole("sales_manager"), async (req, res) => {
   try {
     const result = await req.db.query(
       `UPDATE products
@@ -142,9 +163,28 @@ router.delete('/products/:id/discount', auth, async (req, res) => {
 router.get('/orders', auth, async (req, res) => {
   try {
     const result = await req.db.query(
-      `SELECT o.*, u.email AS user_email, u.name AS user_name
+      `SELECT 
+          o.*,
+          u.email AS user_email,
+          u.name AS user_name,
+          a.full_address,
+          a.city,
+          a.district,
+          COALESCE(
+            json_agg(
+              json_build_object(
+                'product_name', p.name,
+                'quantity', oi.quantity
+              )
+            ) FILTER (WHERE p.id IS NOT NULL),
+            '[]'
+          ) AS items
        FROM orders o
        LEFT JOIN users u ON o.user_id = u.id
+       LEFT JOIN addresses a ON o.shipping_address_id = a.id
+       LEFT JOIN order_items oi ON o.id = oi.order_id
+       LEFT JOIN products p ON oi.product_id = p.id
+       GROUP BY o.id, u.email, u.name, a.full_address, a.city, a.district
        ORDER BY o.created_at DESC`
     );
     res.json(result.rows);

@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
 
 const getTabsByRole = (role) => {
   if (role === "product_manager") {
@@ -29,6 +30,10 @@ const AdminDashboard = () => {
   const token = localStorage.getItem("adminToken");
   const adminRole = localStorage.getItem("adminRole");
   const tabs = getTabsByRole(adminRole);
+  const revenueChartData = orders.map((order) => ({
+    name: `#${order.id}`,
+    total: Number(order.total_amount || 0)
+  }));
 
   const fetchAll = useCallback(() => {
     fetch("http://localhost:5002/api/admin/products", { headers: { Authorization: `Bearer ${token}` } })
@@ -369,7 +374,7 @@ const AdminDashboard = () => {
               <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.9rem" }}>
                 <thead>
                   <tr style={{ borderBottom: "2px solid #f3f4f6" }}>
-                    {["ID", "User", "Total", "Status", "Date"].map(h => (
+                  {["ID", "User", "Items", "Delivery Address", "Total", "Status", "Date"].map(h => (
                       <th key={h} style={{ textAlign: "left", padding: "0.7rem 1rem", color: "#6b7280", fontWeight: "700", fontSize: "0.8rem", textTransform: "uppercase" }}>{h}</th>
                     ))}
                   </tr>
@@ -379,25 +384,54 @@ const AdminDashboard = () => {
                     <tr key={o.id} style={{ borderBottom: "1px solid #f3f4f6" }}>
                       <td style={{ padding: "0.7rem 1rem", color: "#6b7280" }}>#{o.id}</td>
                       <td style={{ padding: "0.7rem 1rem", fontWeight: "600" }}>{o.user_email || o.email || "-"}</td>
+                      <td style={{ padding: "0.7rem 1rem", color: "#374151" }}>
+  {o.items && o.items.length > 0
+    ? o.items.map((item, index) => (
+        <div key={index}>
+          {item.product_name} x {item.quantity}
+        </div>
+      ))
+    : "-"}
+</td>
+
+<td style={{ padding: "0.7rem 1rem", color: "#6b7280", maxWidth: "240px" }}>
+  {o.full_address
+    ? `${o.full_address}${o.district ? ", " + o.district : ""}${o.city ? ", " + o.city : ""}`
+    : "-"}
+</td>
                       <td style={{ padding: "0.7rem 1rem", fontWeight: "700", color: "#b91c1c" }}>${parseFloat(o.total_amount || 0).toFixed(2)}</td>
                       <td style={{ padding: "0.7rem 1rem" }}>
-                        <select
-                          value={(o.status || "processing").toLowerCase()}
-                          onChange={(e) => handleUpdateOrderStatus(o.id, e.target.value)}
-                          style={{
-                            padding: "0.35rem 0.6rem",
-                            borderRadius: "8px",
-                            border: "1px solid #e5e7eb",
-                            fontWeight: "700",
-                            color: "#111",
-                            background: "#f9fafb"
-                          }}
-                        >
-                          <option value="processing">Processing</option>
-                          <option value="in-transit">In-Transit</option>
-                          <option value="delivered">Delivered</option>
-                          <option value="cancelled">Cancelled</option>
-                        </select>
+                      {adminRole === "product_manager" ? (
+  <select
+    value={o.status}
+    onChange={(e) => handleUpdateOrderStatus(o.id, e.target.value)}
+    style={{
+      padding: "0.45rem 0.7rem",
+      borderRadius: "10px",
+      border: "1px solid #D1D5DB",
+      background: "#fff",
+      fontWeight: "600",
+      cursor: "pointer"
+    }}
+  >
+    <option value="processing">Processing</option>
+    <option value="in-transit">In Transit</option>
+    <option value="delivered">Delivered</option>
+    <option value="cancelled">Cancelled</option>
+  </select>
+) : (
+  <span
+    style={{
+      background: "#f3f4f6",
+      padding: "0.45rem 0.8rem",
+      borderRadius: "10px",
+      fontWeight: "600",
+      display: "inline-block"
+    }}
+  >
+    {o.status}
+  </span>
+)}
                       </td>
                       <td style={{ padding: "0.7rem 1rem", color: "#6b7280" }}>{o.created_at ? new Date(o.created_at).toLocaleDateString() : "-"}</td>
                     </tr>
@@ -462,6 +496,20 @@ const AdminDashboard = () => {
         </p>
       </div>
     </div>
+    <div style={{ marginTop: "2rem", height: "300px" }}>
+  <h3 style={{ marginBottom: "1rem" }}>
+    Revenue by Order
+  </h3>
+
+  <ResponsiveContainer width="100%" height="100%">
+    <BarChart data={revenueChartData}>
+      <XAxis dataKey="name" />
+      <YAxis />
+      <Tooltip />
+      <Bar dataKey="total" />
+    </BarChart>
+  </ResponsiveContainer>
+</div>
   </>
 )}
         {/* USERS TAB */}
