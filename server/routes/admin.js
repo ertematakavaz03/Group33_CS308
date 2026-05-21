@@ -1,8 +1,19 @@
 const express = require('express');
 const router = express.Router();
 
-const ADMIN_USER = "admin";
-const ADMIN_PASS = "admin123";
+const ADMINS = [
+  {
+    username: "product_manager",
+    password: "product123",
+    role: "product_manager"
+  },
+  {
+    username: "sales_manager",
+    password: "sales123",
+    role: "sales_manager"
+  }
+];
+
 const ADMIN_TOKEN = "pazaryolu-admin-secret-token";
 
 // Auth middleware
@@ -15,10 +26,19 @@ const auth = (req, res, next) => {
 // Login
 router.post('/login', (req, res) => {
   const { username, password } = req.body;
-  if (username === ADMIN_USER && password === ADMIN_PASS) {
-    return res.json({ token: ADMIN_TOKEN });
+
+  const admin = ADMINS.find(
+    (a) => a.username === username && a.password === password
+  );
+
+  if (!admin) {
+    return res.status(401).json({ error: "Invalid credentials" });
   }
-  res.status(401).json({ error: "Invalid credentials" });
+
+  res.json({
+    token: ADMIN_TOKEN,
+    role: admin.role
+  });
 });
 
 // Products list (admin) — includes discount info + computed effective price

@@ -17,7 +17,8 @@ const AdminLogin = () => {
       const data = await res.json();
       if (!res.ok) { setError(data.error || "Invalid credentials"); return; }
       localStorage.setItem("adminToken", data.token);
-      navigate("/admin/dashboard");
+      localStorage.setItem("adminRole", data.role);
+      navigate("/admin/dashboard"); 
     } catch {
       setError("Network error");
     }
