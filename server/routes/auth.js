@@ -1,8 +1,15 @@
 const express = require('express');
 const router = express.Router();
 const bcrypt = require('bcrypt');
+const rateLimit = require('../utils/rateLimiter');
 
 const SALT_ROUNDS = 10;
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const MIN_PASSWORD_LENGTH = 6;
+
+// Brute-force protection on the credential endpoints.
+const loginLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 10, message: 'Too many login attempts. Please try again later.' });
+const registerLimiter = rateLimit({ windowMs: 60 * 60 * 1000, max: 15, message: 'Too many sign-up attempts. Please try again later.' });
 
 
 // verify if user still exists
@@ -23,14 +30,32 @@ router.get('/verify/:id', async (req, res) => {
 });
 
 // sign in user things
-router.post('/register', async (req, res) => {
+router.post('/register', registerLimiter, async (req, res) => {
     const { name, email, phone, password } = req.body;
 
+    // Validate every field before touching the database — missing fields
+    // previously caused an unhandled crash (500).
+    if (!name || !String(name).trim()) {
+        return res.status(400).json({ error: 'Name is required' });
+    }
+    if (!email || !EMAIL_REGEX.test(String(email).trim())) {
+        return res.status(400).json({ error: 'A valid email address is required' });
+    }
+    const phoneDigits = String(phone || '').replace(/\D/g, '');
+    if (phoneDigits.length < 10) {
+        return res.status(400).json({ error: 'A valid phone number is required' });
+    }
+    if (!password || String(password).length < MIN_PASSWORD_LENGTH) {
+        return res.status(400).json({ error: `Password must be at least ${MIN_PASSWORD_LENGTH} characters` });
+    }
+
+    const cleanName = String(name).trim();
+    const cleanEmail = String(email).trim();
+
     try {
-        
         const duplicate = await req.db.query(
             'SELECT id FROM users WHERE email = $1 OR phone = $2',
-            [email, phone.replace(/\D/g, '')]
+            [cleanEmail, phoneDigits]
         );
 
         if (duplicate.rows.length > 0) {
@@ -41,7 +66,7 @@ router.post('/register', async (req, res) => {
 
         const result = await req.db.query(
             'INSERT INTO users (name, email, phone, password, role) VALUES ($1, $2, $3, $4, $5) RETURNING id, name, email, role',
-            [name, email, phone.replace(/\D/g, ''), hashedPassword, 'customer']
+            [cleanName, cleanEmail, phoneDigits, hashedPassword, 'customer']
         );
 
         res.status(201).json({ message: 'User registered successfully!', user: result.rows[0] });
@@ -52,13 +77,17 @@ router.post('/register', async (req, res) => {
 });
 
 // user to login
-router.post('/login', async (req, res) => {
+router.post('/login', loginLimiter, async (req, res) => {
     const { email, password } = req.body;
+
+    if (!email || !password) {
+        return res.status(400).json({ error: 'Email and password are required' });
+    }
 
     try {
         const result = await req.db.query(
             'SELECT * FROM users WHERE email = $1',
-            [email]
+            [String(email).trim()]
         );
 
         if (result.rows.length === 0) {

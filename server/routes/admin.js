@@ -2,6 +2,10 @@ const express = require('express');
 const crypto = require('crypto');
 const router = express.Router();
 const sendDiscountEmail = require('../utils/sendDiscountEmail');
+const rateLimit = require('../utils/rateLimiter');
+
+// Brute-force protection on the admin login endpoint.
+const adminLoginLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 10, message: 'Too many login attempts. Please try again later.' });
 
 // Fire wishlist price-drop notifications for a freshly discounted product (non-blocking)
 const notifyWishlistUsers = async (db, product) => {
@@ -84,7 +88,7 @@ const requireRole = (...allowedRoles) => {
 };
 
 // Login
-router.post('/login', (req, res) => {
+router.post('/login', adminLoginLimiter, (req, res) => {
   const { username, password } = req.body;
 
   const admin = ADMINS.find(
@@ -137,7 +141,7 @@ router.get('/products', auth, async (req, res) => {
        ORDER BY p.created_at DESC`
     );
     res.json(result.rows);
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { console.error('Admin route error:', err); res.status(500).json({ error: 'Internal server error' }); }
 });
 
 // Products CRUD
@@ -149,7 +153,7 @@ router.post('/products', auth, requireRole("product_manager"), async (req, res) 
       [name, model, serial_no, description, stock, price, warranty, distributor, category, image_url, 'active']
     );
     res.json(result.rows[0]);
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { console.error('Admin route error:', err); res.status(500).json({ error: 'Internal server error' }); }
 });
 
 router.put('/products/:id', auth, requireRole("product_manager"), async (req, res) => {
@@ -160,14 +164,14 @@ router.put('/products/:id', auth, requireRole("product_manager"), async (req, re
       [name, model, serial_no, description, stock, price, warranty, distributor, category, image_url, req.params.id]
     );
     res.json(result.rows[0]);
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { console.error('Admin route error:', err); res.status(500).json({ error: 'Internal server error' }); }
 });
 
 router.delete('/products/:id', auth, requireRole("product_manager"), async (req, res) => {
   try {
     await req.db.query('DELETE FROM products WHERE id=$1', [req.params.id]);
     res.json({ message: 'Deleted' });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { console.error('Admin route error:', err); res.status(500).json({ error: 'Internal server error' }); }
 });
 
 // Set / update a product's discount (dynamic, date-ranged)
@@ -196,7 +200,7 @@ router.put('/products/:id/discount', auth, requireRole("sales_manager"), async (
     notifyWishlistUsers(req.db, result.rows[0]);
 
     res.json(result.rows[0]);
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { console.error('Admin route error:', err); res.status(500).json({ error: 'Internal server error' }); }
 });
 
 // Clear a product's discount
@@ -213,7 +217,7 @@ router.delete('/products/:id/discount', auth, requireRole("sales_manager"), asyn
     );
     if (result.rows.length === 0) return res.status(404).json({ error: 'Product not found' });
     res.json(result.rows[0]);
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { console.error('Admin route error:', err); res.status(500).json({ error: 'Internal server error' }); }
 });
 
 // Orders
@@ -325,7 +329,7 @@ router.get('/users', auth, async (req, res) => {
   try {
     const result = await req.db.query('SELECT id, name, email, created_at FROM users ORDER BY created_at DESC');
     res.json(result.rows);
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { console.error('Admin route error:', err); res.status(500).json({ error: 'Internal server error' }); }
 });
 
 // Reviews
@@ -339,7 +343,7 @@ router.get('/reviews', auth, async (req, res) => {
              ORDER BY r.created_at DESC`
         );
         res.json(result.rows);
-    } catch (err) { res.status(500).json({ error: err.message }); }
+    } catch (err) { console.error('Admin route error:', err); res.status(500).json({ error: 'Internal server error' }); }
 });
 
 router.put('/reviews/:id/status', auth, async (req, res) => {
@@ -354,7 +358,7 @@ router.put('/reviews/:id/status', auth, async (req, res) => {
         );
         if (result.rows.length === 0) return res.status(404).json({ error: 'Review not found' });
         res.json(result.rows[0]);
-    } catch (err) { res.status(500).json({ error: err.message }); }
+    } catch (err) { console.error('Admin route error:', err); res.status(500).json({ error: 'Internal server error' }); }
 });
 
 // Returns (Sales Manager): list all return requests

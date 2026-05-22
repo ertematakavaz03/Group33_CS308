@@ -40,14 +40,37 @@ describe('POST /api/auth/register', () => {
         expect(res.body).toHaveProperty('error');
     });
 
-    test('returns 500 if phone is missing', async () => {
+    test('returns 400 if phone is missing', async () => {
         const res = await request(app).post('/api/auth/register').send({
             name: 'Test User',
             email: 'test@test.com',
             password: 'password123'
         });
 
-        expect(res.status).toBe(500);
+        expect(res.status).toBe(400);
+        expect(res.body).toHaveProperty('error');
+    });
+
+    test('returns 400 for an invalid email format', async () => {
+        const res = await request(app).post('/api/auth/register').send({
+            name: 'Test User',
+            email: 'not-an-email',
+            phone: '5551112233',
+            password: 'password123'
+        });
+
+        expect(res.status).toBe(400);
+    });
+
+    test('returns 400 for a too-short password', async () => {
+        const res = await request(app).post('/api/auth/register').send({
+            name: 'Test User',
+            email: 'shortpw@test.com',
+            phone: '5551112233',
+            password: '123'
+        });
+
+        expect(res.status).toBe(400);
     });
 });
 
