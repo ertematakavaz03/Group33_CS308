@@ -6,38 +6,63 @@ const generateInvoicePDF = require('../utils/generateInvoicePDF');
 // customer checkout
 router.post('/checkout', async (req, res) => {
   try {
-    const { userId, userEmail, userName, items, totalAmount, shippingAddressId, billingAddressId } = req.body;
+    const { userId, userEmail, userName, items, shippingAddressId, billingAddressId } = req.body;
 
     if (!userId || !userEmail || !Array.isArray(items) || items.length === 0) {
       return res.status(400).json({ error: 'Checkout requires a user, email, and at least one item.' });
     }
 
-    const hasInvalidItem = items.some((item) => {
-      const productId = item?.id || item?.product_id;
-      return !Number.isInteger(productId) ||
-             !Number.isInteger(item?.quantity) ||
-             item.quantity < 1 ||
-             Number(item?.price) < 0;
-    });
+    // Only the product id and quantity are trusted from the client.
+    // Prices are NEVER taken from the request — they are resolved server-side.
+    const requestedItems = items.map((item) => ({
+      productId: item?.id ?? item?.product_id,
+      quantity: item?.quantity
+    }));
 
+    const hasInvalidItem = requestedItems.some((item) =>
+      !Number.isInteger(item.productId) ||
+      !Number.isInteger(item.quantity) ||
+      item.quantity < 1
+    );
     if (hasInvalidItem) {
-      return res.status(400).json({ error: 'Checkout items must include a product id, positive quantity, and valid price.' });
+      return res.status(400).json({ error: 'Checkout items must include a product id and a positive quantity.' });
     }
 
     await req.db.query('BEGIN');
 
-    // decrease stock
-    for (const item of items) {
-      const productId = item.id || item.product_id;
+    // Decrease stock and read the authoritative (discount-aware) price in one
+    // atomic statement, so the price cannot be tampered with by the client.
+    const pricedItems = [];
+    for (const item of requestedItems) {
       const result = await req.db.query(
-        'UPDATE products SET stock = stock - $1, sales_count = sales_count + $1 WHERE id = $2 AND stock >= $1 RETURNING id',
-        [item.quantity, productId]
+        `UPDATE products
+            SET stock = stock - $1, sales_count = sales_count + $1
+          WHERE id = $2 AND stock >= $1
+          RETURNING id, name,
+            CASE
+              WHEN discount_percentage > 0
+                AND (discount_start IS NULL OR discount_start <= NOW())
+                AND (discount_end   IS NULL OR discount_end   >= NOW())
+              THEN ROUND(price * (1 - discount_percentage / 100), 2)
+              ELSE price
+            END AS effective_price`,
+        [item.quantity, item.productId]
       );
       if (result.rows.length === 0) {
         await req.db.query('ROLLBACK');
         return res.status(400).json({ error: 'Not enough stock for one or more items.' });
       }
+      const row = result.rows[0];
+      pricedItems.push({
+        id: row.id,
+        name: row.name,
+        quantity: item.quantity,
+        price: Number(row.effective_price)
+      });
     }
+
+    // The server is the single source of truth for the order total.
+    const totalAmount = pricedItems.reduce((sum, i) => sum + i.price * i.quantity, 0);
 
     const orderResult = await req.db.query(
       `INSERT INTO orders (user_id, total_amount, shipping_address_id, billing_address_id, status)
@@ -46,11 +71,11 @@ router.post('/checkout', async (req, res) => {
     );
     const orderId = orderResult.rows[0].id;
 
-    for (const item of items) {
+    for (const item of pricedItems) {
       await req.db.query(
         `INSERT INTO order_items (order_id, product_id, quantity, price_at_purchase)
          VALUES ($1, $2, $3, $4)`,
-        [orderId, item.id || item.product_id, item.quantity, item.price]
+        [orderId, item.id, item.quantity, item.price]
       );
     }
 
@@ -80,13 +105,13 @@ await sendOrderEmail(userEmail, {
   customerName: userName,
   customerEmail: userEmail,
   date: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' }),
-  items,
+  items: pricedItems,
   totalAmount,
   shippingAddress,
   billingAddress
 }).catch(err => console.error('Email error:', err));
 
-    res.status(200).json({ message: 'Order completed successfully', orderId });
+    res.status(200).json({ message: 'Order completed successfully', orderId, totalAmount });
   } catch (error) {
     console.error('Order checkout error:', error);
     try { await req.db.query('ROLLBACK'); } catch (_) {}

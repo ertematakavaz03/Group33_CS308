@@ -13,11 +13,11 @@ app.use('/api/orders', ordersRoutes);
 describe('POST /api/orders/checkout', () => {
     test('successfully creates an order and returns orderId', async () => {
         mockDb.query
-            .mockResolvedValueOnce({ rows: [] })              // BEGIN
-            .mockResolvedValueOnce({ rows: [{ id: 1 }] })    // stock update (sufficient)
-            .mockResolvedValueOnce({ rows: [{ id: 42 }] })   // orders INSERT → orderId = 42
-            .mockResolvedValueOnce({ rows: [] })              // order_items INSERT
-            .mockResolvedValueOnce({ rows: [] })              // COMMIT
+            .mockResolvedValueOnce({ rows: [] })                                            // BEGIN
+            .mockResolvedValueOnce({ rows: [{ id: 1, name: 'Laptop', effective_price: 100 }] }) // stock update + price
+            .mockResolvedValueOnce({ rows: [{ id: 42 }] })                                  // orders INSERT → orderId = 42
+            .mockResolvedValueOnce({ rows: [] })                                            // order_items INSERT
+            .mockResolvedValueOnce({ rows: [] })                                            // COMMIT
             .mockResolvedValueOnce({ rows: [{ id: 1, full_address: '123 St', city: 'Istanbul' }] })
             .mockResolvedValueOnce({ rows: [{ id: 1, full_address: '123 St', city: 'Istanbul' }] });
 
@@ -25,13 +25,43 @@ describe('POST /api/orders/checkout', () => {
             userId: 1,
             userEmail: 'test@test.com',
             items: [{ id: 1, quantity: 2, price: 100 }],
-            totalAmount: 200,
             shippingAddressId: 1,
             billingAddressId: 1
         });
 
         expect(res.status).toBe(200);
         expect(res.body).toHaveProperty('orderId', 42);
+    });
+
+    test('ignores the client-supplied price and uses the server price', async () => {
+        mockDb.query
+            .mockResolvedValueOnce({ rows: [] })                                            // BEGIN
+            .mockResolvedValueOnce({ rows: [{ id: 1, name: 'Laptop', effective_price: 100 }] }) // stock update + price
+            .mockResolvedValueOnce({ rows: [{ id: 7 }] })                                   // orders INSERT
+            .mockResolvedValueOnce({ rows: [] })                                            // order_items INSERT
+            .mockResolvedValueOnce({ rows: [] })                                            // COMMIT
+            .mockResolvedValueOnce({ rows: [{ id: 1 }] })
+            .mockResolvedValueOnce({ rows: [{ id: 1 }] });
+
+        // Attacker sends price 0.01 / total 0.02 — both must be ignored.
+        const res = await request(app).post('/api/orders/checkout').send({
+            userId: 1,
+            userEmail: 'test@test.com',
+            items: [{ id: 1, quantity: 2, price: 0.01 }],
+            totalAmount: 0.02,
+            shippingAddressId: 1,
+            billingAddressId: 1
+        });
+
+        expect(res.status).toBe(200);
+        // Server total = effective_price(100) * qty(2) = 200, not the client's 0.02
+        expect(res.body.totalAmount).toBe(200);
+
+        const ordersInsert = mockDb.query.mock.calls.find(c => /INSERT INTO orders/i.test(c[0]));
+        expect(ordersInsert[1][1]).toBe(200);
+
+        const itemInsert = mockDb.query.mock.calls.find(c => /INSERT INTO order_items/i.test(c[0]));
+        expect(itemInsert[1][3]).toBe(100);
     });
 
     test('returns 400 when stock is insufficient', async () => {
@@ -83,13 +113,13 @@ describe('POST /api/orders/checkout', () => {
 
     test('successfully checks out multiple items', async () => {
         mockDb.query
-            .mockResolvedValueOnce({ rows: [] })              // BEGIN
-            .mockResolvedValueOnce({ rows: [{ id: 1 }] })    // stock item 1
-            .mockResolvedValueOnce({ rows: [{ id: 2 }] })    // stock item 2
-            .mockResolvedValueOnce({ rows: [{ id: 99 }] })   // orders INSERT
-            .mockResolvedValueOnce({ rows: [] })              // order_items INSERT item 1
-            .mockResolvedValueOnce({ rows: [] })              // order_items INSERT item 2
-            .mockResolvedValueOnce({ rows: [] })              // COMMIT
+            .mockResolvedValueOnce({ rows: [] })                                          // BEGIN
+            .mockResolvedValueOnce({ rows: [{ id: 1, name: 'A', effective_price: 50 }] })  // stock item 1
+            .mockResolvedValueOnce({ rows: [{ id: 2, name: 'B', effective_price: 75 }] })  // stock item 2
+            .mockResolvedValueOnce({ rows: [{ id: 99 }] })                                // orders INSERT
+            .mockResolvedValueOnce({ rows: [] })                                          // order_items INSERT item 1
+            .mockResolvedValueOnce({ rows: [] })                                          // order_items INSERT item 2
+            .mockResolvedValueOnce({ rows: [] })                                          // COMMIT
             .mockResolvedValueOnce({ rows: [{ id: 1, full_address: '123 St', city: 'Istanbul' }] })
             .mockResolvedValueOnce({ rows: [{ id: 1, full_address: '123 St', city: 'Istanbul' }] });
 
@@ -100,13 +130,14 @@ describe('POST /api/orders/checkout', () => {
                 { id: 1, quantity: 1, price: 50 },
                 { id: 2, quantity: 2, price: 75 }
             ],
-            totalAmount: 200,
             shippingAddressId: 1,
             billingAddressId: 1
         });
 
         expect(res.status).toBe(200);
         expect(res.body.orderId).toBe(99);
+        // Server total = 50*1 + 75*2 = 200
+        expect(res.body.totalAmount).toBe(200);
     });
 });
 

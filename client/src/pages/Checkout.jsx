@@ -266,7 +266,8 @@ const Checkout = () => {
             orderId: data.orderId,
             date: new Date().toLocaleDateString("en-GB", { day: "2-digit", month: "long", year: "numeric" }),
             items: cartItems,
-            totalAmount,
+            // The server is authoritative for the total; fall back to the local sum.
+            totalAmount: data.totalAmount ?? totalAmount,
             shippingAddress: shippingAddr,
             customerName: currentUser?.name,
             customerEmail: currentUser?.email,
