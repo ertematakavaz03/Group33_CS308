@@ -4,7 +4,7 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recha
 
 const getTabsByRole = (role) => {
   if (role === "product_manager") {
-    return ["Products", "Orders", "Reviews"];
+    return ["Products", "Deliveries", "Reviews"];
   }
 
   if (role === "sales_manager") {
@@ -19,6 +19,7 @@ const AdminDashboard = () => {
   const [activeTab, setActiveTab] = useState("Products");
   const [products, setProducts] = useState([]);
   const [orders, setOrders] = useState([]);
+  const [deliveries, setDeliveries] = useState([]);
   const [users, setUsers] = useState([]);
   const [reviews, setReviews] = useState([]);
   const [showAddForm, setShowAddForm] = useState(false);
@@ -38,12 +39,23 @@ const AdminDashboard = () => {
   const fetchAll = useCallback(() => {
     fetch("http://localhost:5002/api/admin/products", { headers: { Authorization: `Bearer ${token}` } })
       .then(r => r.json()).then(setProducts).catch(console.error);
-    fetch("http://localhost:5002/api/admin/orders", { headers: { Authorization: `Bearer ${token}` } })
-      .then(r => r.json())
-      .then(setOrders)
-      .catch(console.error);
+
+    if (adminRole === "sales_manager") {
+      fetch("http://localhost:5002/api/admin/orders", { headers: { Authorization: `Bearer ${token}` } })
+        .then(r => r.json())
+        .then(setOrders)
+        .catch(console.error);
+    }
+
+    if (adminRole === "product_manager") {
+      fetch("http://localhost:5002/api/admin/deliveries", { headers: { Authorization: `Bearer ${token}` } })
+        .then(r => r.json())
+        .then(setDeliveries)
+        .catch(console.error);
+    }
+
     fetch("http://localhost:5002/api/admin/reviews", { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()).then(setReviews).catch(() => { });
-  }, [token]);
+  }, [token, adminRole]);
 
   const toLocalInput = (iso) => {
     if (!iso) return "";
@@ -137,6 +149,26 @@ const AdminDashboard = () => {
       }
     } catch (err) {
       console.error("Status update failed:", err);
+    }
+  };
+
+  const handleUpdateDeliveryStatus = async (orderId, newStatus) => {
+    try {
+      const res = await fetch(`http://localhost:5002/api/admin/orders/${orderId}/status`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ status: newStatus })
+      });
+
+      if (res.ok) {
+        setDeliveries((prev) =>
+          prev.map((d) =>
+            d.order_id === orderId ? { ...d, status: newStatus } : d
+          )
+        );
+      }
+    } catch (err) {
+      console.error("Delivery status update failed:", err);
     }
   };
 
@@ -439,6 +471,58 @@ const AdminDashboard = () => {
                 </tbody>
               </table>
               {orders.length === 0 && <p style={{ color: "#6b7280", textAlign: "center", padding: "2rem" }}>No orders yet.</p>}
+            </div>
+          </>
+        )}
+
+        {/* DELIVERIES TAB */}
+        {activeTab === "Deliveries" && (
+          <>
+            <h2 style={{ marginTop: 0, fontWeight: "800" }}>Delivery List ({deliveries.length})</h2>
+            <div style={{ overflowX: "auto" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.9rem" }}>
+                <thead>
+                  <tr style={{ borderBottom: "2px solid #f3f4f6" }}>
+                  {["Delivery ID", "Customer ID", "Product", "Qty", "Total Price", "Delivery Address", "Status"].map(h => (
+                      <th key={h} style={{ textAlign: "left", padding: "0.7rem 1rem", color: "#6b7280", fontWeight: "700", fontSize: "0.8rem", textTransform: "uppercase" }}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {deliveries.map(d => (
+                    <tr key={d.delivery_id} style={{ borderBottom: "1px solid #f3f4f6" }}>
+                      <td style={{ padding: "0.7rem 1rem", color: "#6b7280" }}>#{d.delivery_id}</td>
+                      <td style={{ padding: "0.7rem 1rem", color: "#6b7280" }}>User #{d.customer_id}</td>
+                      <td style={{ padding: "0.7rem 1rem", fontWeight: "600" }}>{d.product_name || `Product #${d.product_id}`}</td>
+                      <td style={{ padding: "0.7rem 1rem" }}>{d.quantity}</td>
+                      <td style={{ padding: "0.7rem 1rem", fontWeight: "700", color: "#b91c1c" }}>${parseFloat(d.total_price || 0).toFixed(2)}</td>
+                      <td style={{ padding: "0.7rem 1rem", color: "#6b7280", maxWidth: "240px" }}>
+                        {d.full_address ? `${d.full_address}${d.district ? ", " + d.district : ""}${d.city ? ", " + d.city : ""}` : "-"}
+                      </td>
+                      <td style={{ padding: "0.7rem 1rem" }}>
+                        <select
+                          value={d.status}
+                          onChange={(e) => handleUpdateDeliveryStatus(d.order_id, e.target.value)}
+                          style={{
+                            padding: "0.45rem 0.7rem",
+                            borderRadius: "10px",
+                            border: "1px solid #D1D5DB",
+                            background: "#fff",
+                            fontWeight: "600",
+                            cursor: "pointer"
+                          }}
+                        >
+                          <option value="processing">Processing</option>
+                          <option value="in-transit">In Transit</option>
+                          <option value="delivered">Delivered</option>
+                          <option value="cancelled">Cancelled</option>
+                        </select>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              {deliveries.length === 0 && <p style={{ color: "#6b7280", textAlign: "center", padding: "2rem" }}>No deliveries yet.</p>}
             </div>
           </>
         )}

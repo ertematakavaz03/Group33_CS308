@@ -234,6 +234,35 @@ router.put('/orders/:id/status', auth, async (req, res) => {
   }
 });
 
+// Deliveries (Product Manager specific flattened view)
+router.get('/deliveries', auth, requireRole("product_manager"), async (req, res) => {
+  try {
+    const result = await req.db.query(
+      `SELECT 
+          oi.id AS delivery_id,
+          o.user_id AS customer_id,
+          oi.product_id,
+          p.name AS product_name,
+          oi.quantity,
+          (oi.price_at_purchase * oi.quantity) AS total_price,
+          a.full_address,
+          a.city,
+          a.district,
+          o.status,
+          o.id AS order_id
+       FROM order_items oi
+       JOIN orders o ON oi.order_id = o.id
+       LEFT JOIN products p ON oi.product_id = p.id
+       LEFT JOIN addresses a ON o.shipping_address_id = a.id
+       ORDER BY o.created_at DESC`
+    );
+    res.json(result.rows);
+  } catch (error) {
+    console.error('Error fetching deliveries:', error);
+    res.status(500).json({ error: 'Failed to fetch deliveries' });
+  }
+});
+
 // Users
 router.get('/users', auth, async (req, res) => {
   try {
