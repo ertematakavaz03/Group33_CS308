@@ -114,7 +114,17 @@ const AdminDashboard = () => {
     fetchAll();
   }, [fetchAll, navigate, token]);
 
-  const handleLogout = () => { localStorage.removeItem("adminToken"); navigate("/admin"); };
+  const handleLogout = async () => {
+    try {
+      await fetch("http://localhost:5002/api/admin/logout", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` }
+      });
+    } catch { /* ignore — clear local state regardless */ }
+    localStorage.removeItem("adminToken");
+    localStorage.removeItem("adminRole");
+    navigate("/admin");
+  };
 
   const resetForm = () => setForm({ name: "", model: "", serial_no: "", description: "", stock: "", price: "", warranty: "", distributor: "", category: "", image_url: "" });
 
@@ -122,12 +132,26 @@ const AdminDashboard = () => {
     e.preventDefault();
     const url = editProduct ? `http://localhost:5002/api/admin/products/${editProduct.id}` : "http://localhost:5002/api/admin/products";
     const method = editProduct ? "PUT" : "POST";
-    const res = await fetch(url, {
-      method,
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ ...form, stock: Number(form.stock), price: Number(form.price) }),
-    });
-    if (res.ok) { fetchAll(); setShowAddForm(false); setEditProduct(null); resetForm(); }
+    try {
+      const res = await fetch(url, {
+        method,
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ ...form, stock: Number(form.stock), price: Number(form.price) }),
+      });
+      if (res.ok) {
+        fetchAll(); setShowAddForm(false); setEditProduct(null); resetForm();
+      } else {
+        const data = await res.json().catch(() => ({}));
+        if (res.status === 401) {
+          alert("Your admin session has expired. Please log in again.");
+          handleLogout();
+        } else {
+          alert(data.error || "Failed to save product. Please try again.");
+        }
+      }
+    } catch {
+      alert("Network error. Please try again.");
+    }
   };
 
   const handleDelete = async (id) => {

@@ -1,4 +1,5 @@
 const express = require('express');
+const crypto = require('crypto');
 const router = express.Router();
 const sendDiscountEmail = require('../utils/sendDiscountEmail');
 
@@ -55,14 +56,16 @@ const ADMINS = [
   }
 ];
 
-const ADMIN_TOKEN = "pazaryolu-admin-secret-token";
+// Each successful login gets its own unique token. Keying sessions by a
+// single shared token let one role's login overwrite another's — a
+// product_manager and a sales_manager would collide. Unique tokens fix that.
 const adminSessions = {};
 
 // Auth middleware
 const auth = (req, res, next) => {
   const token = req.headers.authorization?.split(" ")[1];
 
-  if (token !== ADMIN_TOKEN || !adminSessions[token]) {
+  if (!token || !adminSessions[token]) {
     return res.status(401).json({ error: "Unauthorized" });
   }
 
@@ -92,15 +95,24 @@ router.post('/login', (req, res) => {
     return res.status(401).json({ error: "Invalid credentials" });
   }
 
-  adminSessions[ADMIN_TOKEN] = {
+  // Issue a fresh, unique session token so concurrent admin roles never collide.
+  const token = crypto.randomBytes(32).toString('hex');
+  adminSessions[token] = {
     username: admin.username,
     role: admin.role
   };
-  
+
   res.json({
-    token: ADMIN_TOKEN,
+    token,
     role: admin.role
   });
+});
+
+// Logout — invalidate the current session token
+router.post('/logout', auth, (req, res) => {
+  const token = req.headers.authorization?.split(" ")[1];
+  delete adminSessions[token];
+  res.json({ message: 'Logged out' });
 });
 
 // Products list (admin) — includes discount info + computed effective price

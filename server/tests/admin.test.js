@@ -8,16 +8,23 @@ app.use(express.json());
 app.use((req, res, next) => { req.db = mockDb; next(); });
 app.use('/api/admin', adminRoutes);
 
-const ADMIN_TOKEN = 'pazaryolu-admin-secret-token';
-const authHeader = { Authorization: `Bearer ${ADMIN_TOKEN}` };
+// Each login now issues its own unique token, so the tests capture the
+// token from the login response rather than relying on a shared constant.
+let pmHeader;   // product_manager session
+let smHeader;   // sales_manager session
 
-// The auth middleware requires an active admin session, so log in once
-// before the authenticated route tests run to populate it.
 beforeAll(async () => {
-    await request(app).post('/api/admin/login').send({
+    const pm = await request(app).post('/api/admin/login').send({
         username: 'product_manager',
         password: 'product123'
     });
+    pmHeader = { Authorization: `Bearer ${pm.body.token}` };
+
+    const sm = await request(app).post('/api/admin/login').send({
+        username: 'sales_manager',
+        password: 'sales123'
+    });
+    smHeader = { Authorization: `Bearer ${sm.body.token}` };
 });
 
 describe('POST /api/admin/login', () => {
@@ -30,6 +37,16 @@ describe('POST /api/admin/login', () => {
         expect(res.status).toBe(200);
         expect(res.body).toHaveProperty('token');
         expect(res.body).toHaveProperty('role', 'product_manager');
+    });
+
+    test('issues a distinct token per login (no session collision)', async () => {
+        const a = await request(app).post('/api/admin/login').send({
+            username: 'product_manager', password: 'product123'
+        });
+        const b = await request(app).post('/api/admin/login').send({
+            username: 'sales_manager', password: 'sales123'
+        });
+        expect(a.body.token).not.toBe(b.body.token);
     });
 
     test('returns 401 on invalid admin credentials', async () => {
@@ -53,7 +70,7 @@ describe('GET /api/admin/reviews', () => {
             rows: [{ id: 1, rating: 5, comment: 'Great', product_name: 'Laptop', user_name: 'Alice', status: 'pending' }]
         });
 
-        const res = await request(app).get('/api/admin/reviews').set(authHeader);
+        const res = await request(app).get('/api/admin/reviews').set(pmHeader);
 
         expect(res.status).toBe(200);
         expect(res.body[0].status).toBe('pending');
@@ -68,7 +85,7 @@ describe('PUT /api/admin/reviews/:id/status', () => {
 
         const res = await request(app)
             .put('/api/admin/reviews/1/status')
-            .set(authHeader)
+            .set(pmHeader)
             .send({ status: 'approved' });
 
         expect(res.status).toBe(200);
@@ -78,7 +95,7 @@ describe('PUT /api/admin/reviews/:id/status', () => {
     test('returns 400 on invalid status value', async () => {
         const res = await request(app)
             .put('/api/admin/reviews/1/status')
-            .set(authHeader)
+            .set(pmHeader)
             .send({ status: 'invalid_status' });
 
         expect(res.status).toBe(400);
@@ -89,7 +106,7 @@ describe('PUT /api/admin/reviews/:id/status', () => {
 
         const res = await request(app)
             .put('/api/admin/reviews/9999/status')
-            .set(authHeader)
+            .set(pmHeader)
             .send({ status: 'approved' });
 
         expect(res.status).toBe(404);
@@ -97,20 +114,12 @@ describe('PUT /api/admin/reviews/:id/status', () => {
 });
 
 describe('Sales Manager — Returns', () => {
-    // Returns routes require the sales_manager role
-    beforeAll(async () => {
-        await request(app).post('/api/admin/login').send({
-            username: 'sales_manager',
-            password: 'sales123'
-        });
-    });
-
     test('lists all return requests', async () => {
         mockDb.query.mockResolvedValueOnce({
             rows: [{ id: 1, product_name: 'T-Shirt', user_name: 'Alice', status: 'pending' }]
         });
 
-        const res = await request(app).get('/api/admin/returns').set(authHeader);
+        const res = await request(app).get('/api/admin/returns').set(smHeader);
 
         expect(res.status).toBe(200);
         expect(res.body[0]).toHaveProperty('status', 'pending');
@@ -126,7 +135,7 @@ describe('Sales Manager — Returns', () => {
 
         const res = await request(app)
             .put('/api/admin/returns/1')
-            .set(authHeader)
+            .set(smHeader)
             .send({ status: 'approved' });
 
         expect(res.status).toBe(200);
@@ -136,9 +145,14 @@ describe('Sales Manager — Returns', () => {
     test('returns 400 on invalid return status', async () => {
         const res = await request(app)
             .put('/api/admin/returns/1')
-            .set(authHeader)
+            .set(smHeader)
             .send({ status: 'maybe' });
 
         expect(res.status).toBe(400);
+    });
+
+    test('rejects a product_manager from the returns endpoint (role check)', async () => {
+        const res = await request(app).get('/api/admin/returns').set(pmHeader);
+        expect(res.status).toBe(403);
     });
 });
