@@ -98,6 +98,21 @@ CREATE TABLE IF NOT EXISTS return_requests (
     UNIQUE(order_item_id)
 );
 
+-- Saved payment cards. The full card number is stored AES-256-GCM encrypted
+-- (see server/utils/cardCrypto.js). CVV is NEVER stored (PCI-DSS).
+CREATE TABLE IF NOT EXISTS payment_cards (
+    id SERIAL PRIMARY KEY,
+    user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    cardholder_name VARCHAR(255) NOT NULL,
+    card_number_encrypted TEXT NOT NULL,
+    card_last4 VARCHAR(4) NOT NULL,
+    card_brand VARCHAR(20),
+    expiry_month INT NOT NULL CHECK (expiry_month BETWEEN 1 AND 12),
+    expiry_year INT NOT NULL,
+    is_default BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
 ALTER TABLE products ADD COLUMN IF NOT EXISTS discount_percentage NUMERIC(5,2) DEFAULT 0;
 ALTER TABLE products ADD COLUMN IF NOT EXISTS discount_start TIMESTAMP;
 ALTER TABLE products ADD COLUMN IF NOT EXISTS discount_end TIMESTAMP;

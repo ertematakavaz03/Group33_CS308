@@ -26,6 +26,9 @@ const Checkout = () => {
     expiry: "",
     cvv: ""
   });
+  const [savedCards, setSavedCards] = useState([]);
+  const [selectedCardId, setSelectedCardId] = useState("new"); // "new" or a card id
+  const [saveCard, setSaveCard] = useState(false);
   const [success, setSuccess] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [invoiceData, setInvoiceData] = useState(null);
@@ -51,6 +54,17 @@ const Checkout = () => {
           }
         } else {
           console.error("Invalid addresses data:", data);
+        }
+      })
+      .catch(console.error);
+
+    fetch(`http://localhost:5001/api/cards/${userId}`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (Array.isArray(data)) {
+          setSavedCards(data);
+          const def = data.find((c) => c.is_default) || data[0];
+          if (def) setSelectedCardId(def.id);
         }
       })
       .catch(console.error);
@@ -138,47 +152,52 @@ const Checkout = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (!form.name || !form.cardNumber || !form.expiry || !form.cvv) {
-        alert("Please fill in all payment fields");
-        return;
+    const usingSavedCard = selectedCardId !== "new";
+
+    if (!usingSavedCard) {
+      if (!form.name || !form.cardNumber || !form.expiry || !form.cvv) {
+          alert("Please fill in all payment fields");
+          return;
+      }
+      if(form.cvv.length !== 3) {
+          alert("CVV must be 3 digits");
+          return;
+      }
+      if (form.cardNumber.replace(/\s/g, "").length !== 16) {
+          alert("Card number must be 16 digits");
+          return;
+      }
+      if (!/^\d{2}\/\d{2}$/.test(form.expiry)) {
+          alert("Expiry date must be in MM/YY format");
+          return;
+      }
+
+      const month = Number(form.expiry.split("/")[0]);
+      if (month < 1 || month > 12) {
+          alert("Month must be between 01 and 12");
+          return;
+      }
+
+      const [expMonth, expYear] = form.expiry.split("/");
+      const inputMonth = Number(expMonth);
+      const inputYear = Number("20" + expYear);
+
+      const today = new Date();
+      const currentMonth = today.getMonth() + 1;
+      const currentYear = today.getFullYear();
+
+      if (inputYear < currentYear || (inputYear === currentYear && inputMonth < currentMonth)) {
+          alert("Card expiry date cannot be in the past");
+          return;
+      }
     }
+
     if (!shippingAddressId) {
         alert("Please select a shipping address");
         return;
     }
     if (!sameAsShipping && !billingAddressId) {
         alert("Please select a billing address");
-        return;
-    }
-    if(form.cvv.length !== 3) {
-        alert("CVV must be 3 digits");
-        return;
-    }
-    if (form.cardNumber.replace(/\s/g, "").length !== 16) {
-        alert("Card number must be 16 digits");
-        return;
-    }
-    if (!/^\d{2}\/\d{2}$/.test(form.expiry)) {
-        alert("Expiry date must be in MM/YY format");
-        return;
-    }
-    
-    const month = Number(form.expiry.split("/")[0]);
-    if (month < 1 || month > 12) {
-        alert("Month must be between 01 and 12");
-        return;
-    }
-
-    const [expMonth, expYear] = form.expiry.split("/");
-    const inputMonth = Number(expMonth);
-    const inputYear = Number("20" + expYear);
-
-    const today = new Date();
-    const currentMonth = today.getMonth() + 1;
-    const currentYear = today.getFullYear();
-
-    if (inputYear < currentYear || (inputYear === currentYear && inputMonth < currentMonth)) {
-        alert("Card expiry date cannot be in the past");
         return;
     }
 
@@ -224,6 +243,22 @@ const Checkout = () => {
         const userId = currentUser?.id;
         if (userId) {
             await fetch(`http://localhost:5001/api/cart/${userId}`, { method: 'DELETE' }).catch(console.error);
+        }
+
+        // Optionally save the new card for future checkouts (CVV is never sent)
+        if (!usingSavedCard && saveCard && userId) {
+            const [expMonth, expYear] = form.expiry.split("/");
+            await fetch("http://localhost:5001/api/cards", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    userId,
+                    cardholder_name: form.name,
+                    card_number: form.cardNumber.replace(/\s/g, ""),
+                    expiry_month: Number(expMonth),
+                    expiry_year: Number("20" + expYear)
+                })
+            }).catch(console.error);
         }
 
         const shippingAddr = savedAddresses.find(a => a.id === shippingAddressId);
@@ -464,22 +499,74 @@ const Checkout = () => {
 
       <h2 style={{ fontSize: "1.4rem", marginBottom: "1.5rem", color: "var(--text-dark)" }}>Payment Details</h2>
       <form onSubmit={handleSubmit}>
-        <input name="name" placeholder="Name on Card" value={form.name} onChange={handleChange} style={inputStyle} />
 
-        <div style={{ position: "relative", marginBottom: "1rem" }}>
-          <input name="cardNumber" placeholder="Card Number" value={form.cardNumber} onChange={handleChange} style={{ ...inputStyle, marginBottom: 0, paddingRight: "70px" }} />
-          {cardType === "visa" && (
-            <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/5/5c/Visa_Inc._logo_%282021%E2%80%93present%29.svg/960px-Visa_Inc._logo_%282021%E2%80%93present%29.svg.png" alt="Visa" style={cardLogoStyle} />
-          )}
-          {cardType === "mastercard" && (
-            <img src="https://assets.weforum.org/organization/image/pyHyiLnMaQXMa0TXz0PB17X110sq_ESvDuHREqKIKP0.jpg" alt="Mastercard" style={{ ...cardLogoStyle, width: "48px", height: "30px", objectFit: "cover" }} />
-          )}
-        </div>
+        {/* Saved cards */}
+        {savedCards.length > 0 && (
+          <div style={{ marginBottom: "1.25rem", display: "flex", flexDirection: "column", gap: "8px" }}>
+            {savedCards.map((card) => (
+              <label
+                key={card.id}
+                style={{
+                  display: "flex", alignItems: "center", gap: "12px", padding: "0.85rem 1rem",
+                  borderRadius: "10px", cursor: "pointer",
+                  border: `2px solid ${selectedCardId === card.id ? "var(--pazaryolu-red)" : "#e5e7eb"}`,
+                  background: selectedCardId === card.id ? "#fef2f2" : "#fff"
+                }}
+              >
+                <input
+                  type="radio" name="paymentCard" checked={selectedCardId === card.id}
+                  onChange={() => setSelectedCardId(card.id)}
+                />
+                <span style={{ fontWeight: "700", color: "#111" }}>{card.card_brand}</span>
+                <span style={{ color: "#374151", letterSpacing: "0.05em" }}>{card.masked_number}</span>
+                <span style={{ marginLeft: "auto", color: "#9ca3af", fontSize: "0.85rem" }}>
+                  {String(card.expiry_month).padStart(2, "0")}/{String(card.expiry_year).slice(-2)}
+                </span>
+              </label>
+            ))}
+            <label
+              style={{
+                display: "flex", alignItems: "center", gap: "12px", padding: "0.85rem 1rem",
+                borderRadius: "10px", cursor: "pointer",
+                border: `2px solid ${selectedCardId === "new" ? "var(--pazaryolu-red)" : "#e5e7eb"}`,
+                background: selectedCardId === "new" ? "#fef2f2" : "#fff"
+              }}
+            >
+              <input
+                type="radio" name="paymentCard" checked={selectedCardId === "new"}
+                onChange={() => setSelectedCardId("new")}
+              />
+              <span style={{ fontWeight: "700", color: "#111" }}>Use a new card</span>
+            </label>
+          </div>
+        )}
 
-        <div style={{ display: "flex", gap: "15px", marginBottom: "1.5rem" }}>
-          <input name="expiry" placeholder="Expiry (MM/YY)" value={form.expiry} onChange={handleChange} style={{ ...inputStyle, marginBottom: 0, flex: 1 }} />
-          <input name="cvv" placeholder="CVV" value={form.cvv} onChange={handleChange} style={{ ...inputStyle, marginBottom: 0, flex: 1 }} />
-        </div>
+        {/* New card form — only when "new" is selected */}
+        {selectedCardId === "new" && (
+          <>
+            <input name="name" placeholder="Name on Card" value={form.name} onChange={handleChange} style={inputStyle} />
+
+            <div style={{ position: "relative", marginBottom: "1rem" }}>
+              <input name="cardNumber" placeholder="Card Number" value={form.cardNumber} onChange={handleChange} style={{ ...inputStyle, marginBottom: 0, paddingRight: "70px" }} />
+              {cardType === "visa" && (
+                <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/5/5c/Visa_Inc._logo_%282021%E2%80%93present%29.svg/960px-Visa_Inc._logo_%282021%E2%80%93present%29.svg.png" alt="Visa" style={cardLogoStyle} />
+              )}
+              {cardType === "mastercard" && (
+                <img src="https://assets.weforum.org/organization/image/pyHyiLnMaQXMa0TXz0PB17X110sq_ESvDuHREqKIKP0.jpg" alt="Mastercard" style={{ ...cardLogoStyle, width: "48px", height: "30px", objectFit: "cover" }} />
+              )}
+            </div>
+
+            <div style={{ display: "flex", gap: "15px", marginBottom: "1rem" }}>
+              <input name="expiry" placeholder="Expiry (MM/YY)" value={form.expiry} onChange={handleChange} style={{ ...inputStyle, marginBottom: 0, flex: 1 }} />
+              <input name="cvv" placeholder="CVV" value={form.cvv} onChange={handleChange} style={{ ...inputStyle, marginBottom: 0, flex: 1 }} />
+            </div>
+
+            <label style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "1.5rem", fontSize: "0.9rem", color: "#374151", fontWeight: "600", cursor: "pointer" }}>
+              <input type="checkbox" checked={saveCard} onChange={(e) => setSaveCard(e.target.checked)} />
+              Save this card for future checkouts (encrypted — CVV is never stored)
+            </label>
+          </>
+        )}
 
         <button type="submit" style={buttonStyle}>Complete Order</button>
       </form>

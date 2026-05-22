@@ -31,6 +31,7 @@ const orderRoutes = require('./routes/orders');
 const addressRoutes = require('./routes/addresses');
 const wishlistRoutes = require('./routes/wishlist');
 const returnRoutes = require('./routes/returns');
+const cardRoutes = require('./routes/cards');
 
 
 app.use('/api/auth', authRoutes);
@@ -40,6 +41,7 @@ app.use('/api/orders', orderRoutes);
 app.use('/api/addresses', addressRoutes);
 app.use('/api/wishlist', wishlistRoutes);
 app.use('/api/returns', returnRoutes);
+app.use('/api/cards', cardRoutes);
 
 
 app.get('/api/health', (req, res) => {

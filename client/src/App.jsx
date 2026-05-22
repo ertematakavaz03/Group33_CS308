@@ -18,6 +18,7 @@ import MyOrders from './pages/myaccount/MyOrders';
 import MyReviews from './pages/myaccount/MyReviews';
 import MyAddresses from './pages/myaccount/MyAddresses';
 import MyWishlist from './pages/myaccount/MyWishlist';
+import MyCards from './pages/myaccount/MyCards';
 
 function App() {
   useEffect(() => {
@@ -67,6 +68,7 @@ function App() {
               <Route path="myreviews" element={<MyReviews />} />
               <Route path="addresses" element={<MyAddresses />} />
               <Route path="wishlist" element={<MyWishlist />} />
+              <Route path="cards" element={<MyCards />} />
             </Route>
             
             {/* You no longer need a separate '/dashboard' route */}
