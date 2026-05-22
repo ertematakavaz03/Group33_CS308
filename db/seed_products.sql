@@ -124,3 +124,36 @@ SELECT p.id, u.id, 4, 'Good capacity for a small kitchen and food comes out cris
 FROM products p, users u
 WHERE p.serial_no = 'SN-HK-019' AND u.email = 'mert.reviewer@example.com'
 ON CONFLICT (user_id, product_id) DO NOTHING;
+
+-- Mock Addresses
+INSERT INTO addresses (user_id, title, full_address, city, district, postal_code, is_default)
+SELECT id, 'Home', '123 Main St, Apt 4B', 'Istanbul', 'Kadikoy', '34710', TRUE FROM users WHERE email = 'ayse.reviewer@example.com'
+ON CONFLICT DO NOTHING;
+
+INSERT INTO addresses (user_id, title, full_address, city, district, postal_code, is_default)
+SELECT id, 'Office', '456 Business Rd, Floor 2', 'Ankara', 'Cankaya', '06690', TRUE FROM users WHERE email = 'mert.reviewer@example.com'
+ON CONFLICT DO NOTHING;
+
+-- Mock Orders
+INSERT INTO orders (user_id, total_amount, shipping_address_id, billing_address_id, status)
+SELECT u.id, 150.00, a.id, a.id, 'processing'
+FROM users u JOIN addresses a ON u.id = a.user_id
+WHERE u.email = 'ayse.reviewer@example.com'
+LIMIT 1;
+
+INSERT INTO orders (user_id, total_amount, shipping_address_id, billing_address_id, status)
+SELECT u.id, 65.00, a.id, a.id, 'in-transit'
+FROM users u JOIN addresses a ON u.id = a.user_id
+WHERE u.email = 'mert.reviewer@example.com'
+LIMIT 1;
+
+-- Mock Order Items
+INSERT INTO order_items (order_id, product_id, quantity, price_at_purchase)
+SELECT o.id, p.id, 1, 150.00
+FROM orders o, products p, users u
+WHERE o.user_id = u.id AND u.email = 'ayse.reviewer@example.com' AND p.serial_no = 'SN-EL-001' AND o.total_amount = 150.00;
+
+INSERT INTO order_items (order_id, product_id, quantity, price_at_purchase)
+SELECT o.id, p.id, 1, 65.00
+FROM orders o, products p, users u
+WHERE o.user_id = u.id AND u.email = 'mert.reviewer@example.com' AND p.serial_no = 'SN-SO-021' AND o.total_amount = 65.00;
