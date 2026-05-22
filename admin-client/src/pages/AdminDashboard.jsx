@@ -38,30 +38,30 @@ const AdminDashboard = () => {
   }));
 
   const fetchAll = useCallback(() => {
-    fetch("http://localhost:5002/api/admin/products", { headers: { Authorization: `Bearer ${token}` } })
-      .then(r => r.json()).then(setProducts).catch(console.error);
-
-    if (adminRole === "sales_manager") {
-      fetch("http://localhost:5002/api/admin/orders", { headers: { Authorization: `Bearer ${token}` } })
-        .then(r => r.json())
-        .then(setOrders)
+    // Resilient loader: handles an expired/invalid session (401) by sending
+    // the admin back to login instead of crashing on a non-array response.
+    const authedGet = (path, setter, enabled = true) => {
+      if (!enabled) return;
+      fetch(`http://localhost:5002/api/admin/${path}`, { headers: { Authorization: `Bearer ${token}` } })
+        .then((r) => {
+          if (r.status === 401) {
+            localStorage.removeItem("adminToken");
+            localStorage.removeItem("adminRole");
+            navigate("/admin");
+            return null;
+          }
+          return r.json();
+        })
+        .then((data) => { if (Array.isArray(data)) setter(data); })
         .catch(console.error);
+    };
 
-      fetch("http://localhost:5002/api/admin/returns", { headers: { Authorization: `Bearer ${token}` } })
-        .then(r => r.json())
-        .then((data) => setReturns(Array.isArray(data) ? data : []))
-        .catch(console.error);
-    }
-
-    if (adminRole === "product_manager") {
-      fetch("http://localhost:5002/api/admin/deliveries", { headers: { Authorization: `Bearer ${token}` } })
-        .then(r => r.json())
-        .then(setDeliveries)
-        .catch(console.error);
-    }
-
-    fetch("http://localhost:5002/api/admin/reviews", { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()).then(setReviews).catch(() => { });
-  }, [token, adminRole]);
+    authedGet("products", setProducts);
+    authedGet("orders", setOrders, adminRole === "sales_manager");
+    authedGet("returns", setReturns, adminRole === "sales_manager");
+    authedGet("deliveries", setDeliveries, adminRole === "product_manager");
+    authedGet("reviews", setReviews);
+  }, [token, adminRole, navigate]);
 
   const toLocalInput = (iso) => {
     if (!iso) return "";
