@@ -118,7 +118,8 @@ router.get('/my-orders/:userId', async (req, res) => {
     const orders = ordersResult.rows;
     for (const order of orders) {
       const itemsResult = await req.db.query(
-        `SELECT oi.product_id, oi.quantity, oi.price_at_purchase, p.name, p.image_url
+        `SELECT oi.id AS order_item_id, oi.product_id, oi.quantity, oi.price_at_purchase,
+                p.name, p.image_url
          FROM order_items oi
          LEFT JOIN products p ON oi.product_id = p.id
          WHERE oi.order_id = $1`,

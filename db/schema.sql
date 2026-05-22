@@ -84,6 +84,20 @@ CREATE TABLE IF NOT EXISTS wishlist_items (
     UNIQUE(user_id, product_id)
 );
 
+CREATE TABLE IF NOT EXISTS return_requests (
+    id SERIAL PRIMARY KEY,
+    order_id INT NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
+    order_item_id INT NOT NULL REFERENCES order_items(id) ON DELETE CASCADE,
+    user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    product_id INT REFERENCES products(id) ON DELETE SET NULL,
+    quantity INT NOT NULL,
+    reason TEXT,
+    status VARCHAR(50) DEFAULT 'pending',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    resolved_at TIMESTAMP,
+    UNIQUE(order_item_id)
+);
+
 ALTER TABLE products ADD COLUMN IF NOT EXISTS discount_percentage NUMERIC(5,2) DEFAULT 0;
 ALTER TABLE products ADD COLUMN IF NOT EXISTS discount_start TIMESTAMP;
 ALTER TABLE products ADD COLUMN IF NOT EXISTS discount_end TIMESTAMP;

@@ -8,7 +8,7 @@ const getTabsByRole = (role) => {
   }
 
   if (role === "sales_manager") {
-    return ["Products", "Orders", "Revenue"];
+    return ["Products", "Orders", "Revenue", "Returns"];
   }
 
   return [];
@@ -22,6 +22,7 @@ const AdminDashboard = () => {
   const [deliveries, setDeliveries] = useState([]);
   const [users, setUsers] = useState([]);
   const [reviews, setReviews] = useState([]);
+  const [returns, setReturns] = useState([]);
   const [showAddForm, setShowAddForm] = useState(false);
   const [editProduct, setEditProduct] = useState(null);
   const [form, setForm] = useState({ name: "", model: "", serial_no: "", description: "", stock: "", price: "", warranty: "", distributor: "", category: "", image_url: "" });
@@ -44,6 +45,11 @@ const AdminDashboard = () => {
       fetch("http://localhost:5002/api/admin/orders", { headers: { Authorization: `Bearer ${token}` } })
         .then(r => r.json())
         .then(setOrders)
+        .catch(console.error);
+
+      fetch("http://localhost:5002/api/admin/returns", { headers: { Authorization: `Bearer ${token}` } })
+        .then(r => r.json())
+        .then((data) => setReturns(Array.isArray(data) ? data : []))
         .catch(console.error);
     }
 
@@ -169,6 +175,27 @@ const AdminDashboard = () => {
       }
     } catch (err) {
       console.error("Delivery status update failed:", err);
+    }
+  };
+
+  const handleProcessReturn = async (returnId, newStatus) => {
+    try {
+      const res = await fetch(`http://localhost:5002/api/admin/returns/${returnId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ status: newStatus })
+      });
+      if (res.ok) {
+        setReturns((prev) =>
+          prev.map((r) => r.id === returnId ? { ...r, status: newStatus, resolved_at: new Date().toISOString() } : r)
+        );
+        fetchAll();
+      } else {
+        const data = await res.json().catch(() => ({}));
+        alert(data.error || "Failed to process return");
+      }
+    } catch (err) {
+      console.error("Return processing failed:", err);
     }
   };
 
@@ -672,6 +699,71 @@ const AdminDashboard = () => {
               </table>
               {reviews.length === 0 && <p style={{ color: "#6b7280", textAlign: "center", padding: "2rem" }}>No reviews to moderate.</p>}
             </div>
+          </>
+        )}
+
+        {/* RETURNS TAB */}
+        {activeTab === "Returns" && (
+          <>
+            <h2 style={{ marginTop: 0, fontWeight: "800" }}>
+              Return Requests ({returns.length})
+              {returns.filter(r => r.status === "pending").length > 0 && (
+                <span style={{ marginLeft: "0.6rem", background: "#fef3c7", color: "#d97706", padding: "2px 10px", borderRadius: "20px", fontSize: "0.8rem", fontWeight: "700" }}>
+                  {returns.filter(r => r.status === "pending").length} pending
+                </span>
+              )}
+            </h2>
+            <div style={{ overflowX: "auto" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.9rem" }}>
+                <thead>
+                  <tr style={{ borderBottom: "2px solid #f3f4f6" }}>
+                    {["Order", "Product", "Customer", "Qty", "Reason", "Date", "Status", "Action"].map(h => (
+                      <th key={h} style={{ textAlign: "left", padding: "0.7rem 1rem", color: "#6b7280", fontWeight: "700", fontSize: "0.8rem", textTransform: "uppercase" }}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {returns.map(r => (
+                    <tr key={r.id} style={{ borderBottom: "1px solid #f3f4f6" }}>
+                      <td style={{ padding: "0.7rem 1rem", color: "#6b7280" }}>#{r.order_id}</td>
+                      <td style={{ padding: "0.7rem 1rem", fontWeight: "600", maxWidth: "160px" }}>{r.product_name || "—"}</td>
+                      <td style={{ padding: "0.7rem 1rem" }}>
+                        <div style={{ fontWeight: "600" }}>{r.user_name}</div>
+                        <div style={{ color: "#9ca3af", fontSize: "0.78rem" }}>{r.user_email}</div>
+                      </td>
+                      <td style={{ padding: "0.7rem 1rem" }}>{r.quantity}</td>
+                      <td style={{ padding: "0.7rem 1rem", maxWidth: "240px", color: "#374151" }}>{r.reason || <span style={{ color: "#9ca3af" }}>—</span>}</td>
+                      <td style={{ padding: "0.7rem 1rem", color: "#6b7280" }}>{new Date(r.created_at).toLocaleDateString()}</td>
+                      <td style={{ padding: "0.7rem 1rem" }}>
+                        <span style={{
+                          background: r.status === 'approved' ? "#dcfce7" : r.status === 'rejected' ? "#fee2e2" : "#fef3c7",
+                          color: r.status === 'approved' ? "#16a34a" : r.status === 'rejected' ? "#dc2626" : "#d97706",
+                          padding: "4px 10px", borderRadius: "20px", fontSize: "0.75rem", fontWeight: "700", textTransform: "capitalize"
+                        }}>
+                          {r.status}
+                        </span>
+                      </td>
+                      <td style={{ padding: "0.7rem 1rem" }}>
+                        {r.status === 'pending' ? (
+                          <div style={{ display: "flex", gap: "0.5rem" }}>
+                            <button onClick={() => handleProcessReturn(r.id, 'approved')} style={{ background: "#dcfce7", color: "#16a34a", border: "none", padding: "0.4rem 0.8rem", borderRadius: "6px", cursor: "pointer", fontWeight: "700" }}>Approve</button>
+                            <button onClick={() => handleProcessReturn(r.id, 'rejected')} style={{ background: "#fee2e2", color: "#dc2626", border: "none", padding: "0.4rem 0.8rem", borderRadius: "6px", cursor: "pointer", fontWeight: "700" }}>Reject</button>
+                          </div>
+                        ) : (
+                          <span style={{ color: "#9ca3af", fontSize: "0.8rem" }}>
+                            {r.resolved_at ? `Resolved ${new Date(r.resolved_at).toLocaleDateString()}` : "Resolved"}
+                          </span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              {returns.length === 0 && <p style={{ color: "#6b7280", textAlign: "center", padding: "2rem" }}>No return requests.</p>}
+            </div>
+            <p style={{ color: "#9ca3af", fontSize: "0.8rem", marginTop: "1rem" }}>
+              Approving a return automatically restocks the product.
+            </p>
           </>
         )}
       </div>

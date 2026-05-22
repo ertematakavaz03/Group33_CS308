@@ -1,5 +1,46 @@
 const express = require('express');
 const router = express.Router();
+const sendDiscountEmail = require('../utils/sendDiscountEmail');
+
+// Fire wishlist price-drop notifications for a freshly discounted product (non-blocking)
+const notifyWishlistUsers = async (db, product) => {
+  try {
+    const pct = Number(product.discount_percentage);
+    if (!pct || pct <= 0) return;
+
+    const now = Date.now();
+    const startOk = !product.discount_start || new Date(product.discount_start).getTime() <= now;
+    const endOk = !product.discount_end || new Date(product.discount_end).getTime() >= now;
+    if (!startOk || !endOk) return; // discount not active yet — don't notify
+
+    const { rows } = await db.query(
+      `SELECT u.name, u.email
+       FROM wishlist_items w
+       JOIN users u ON u.id = w.user_id
+       WHERE w.product_id = $1`,
+      [product.id]
+    );
+
+    const oldPrice = Number(product.price);
+    const newPrice = Math.round(oldPrice * (1 - pct / 100) * 100) / 100;
+
+    for (const user of rows) {
+      sendDiscountEmail(user.email, {
+        customerName: user.name,
+        productId: product.id,
+        productName: product.name,
+        oldPrice,
+        newPrice,
+        discountPercentage: pct
+      }).catch((err) => console.error(`Discount email failed for ${user.email}:`, err.message));
+    }
+    if (rows.length > 0) {
+      console.log(`Discount notification queued for ${rows.length} wishlist user(s) on product ${product.id}`);
+    }
+  } catch (err) {
+    console.error('notifyWishlistUsers error:', err);
+  }
+};
 
 const ADMINS = [
   {
@@ -138,6 +179,10 @@ router.put('/products/:id/discount', auth, requireRole("sales_manager"), async (
       [pct, discount_start || null, discount_end || null, req.params.id]
     );
     if (result.rows.length === 0) return res.status(404).json({ error: 'Product not found' });
+
+    // SCRUM-45: notify wishlist users when the product becomes discounted
+    notifyWishlistUsers(req.db, result.rows[0]);
+
     res.json(result.rows[0]);
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
@@ -298,6 +343,84 @@ router.put('/reviews/:id/status', auth, async (req, res) => {
         if (result.rows.length === 0) return res.status(404).json({ error: 'Review not found' });
         res.json(result.rows[0]);
     } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// Returns (Sales Manager): list all return requests
+router.get('/returns', auth, requireRole("sales_manager"), async (req, res) => {
+  try {
+    const result = await req.db.query(
+      `SELECT rr.*,
+              p.name AS product_name,
+              u.name AS user_name,
+              u.email AS user_email,
+              oi.price_at_purchase
+       FROM return_requests rr
+       LEFT JOIN products p ON p.id = rr.product_id
+       LEFT JOIN users u ON u.id = rr.user_id
+       LEFT JOIN order_items oi ON oi.id = rr.order_item_id
+       ORDER BY
+         CASE WHEN rr.status = 'pending' THEN 0 ELSE 1 END,
+         rr.created_at DESC`
+    );
+    res.json(result.rows);
+  } catch (err) {
+    console.error('Error fetching return requests:', err);
+    res.status(500).json({ error: 'Failed to fetch return requests' });
+  }
+});
+
+// Returns (Sales Manager): approve or reject a return request
+router.put('/returns/:id', auth, requireRole("sales_manager"), async (req, res) => {
+  const { id } = req.params;
+  const { status } = req.body;
+
+  if (!['approved', 'rejected'].includes(status)) {
+    return res.status(400).json({ error: 'Status must be "approved" or "rejected"' });
+  }
+
+  try {
+    await req.db.query('BEGIN');
+
+    const current = await req.db.query(
+      'SELECT * FROM return_requests WHERE id = $1 FOR UPDATE',
+      [id]
+    );
+    if (current.rows.length === 0) {
+      await req.db.query('ROLLBACK');
+      return res.status(404).json({ error: 'Return request not found' });
+    }
+    const request = current.rows[0];
+    if (request.status !== 'pending') {
+      await req.db.query('ROLLBACK');
+      return res.status(400).json({ error: `Return request is already ${request.status}` });
+    }
+
+    // On approval, restock the returned product
+    if (status === 'approved' && request.product_id) {
+      await req.db.query(
+        `UPDATE products
+            SET stock = stock + $1,
+                sales_count = GREATEST(sales_count - $1, 0)
+          WHERE id = $2`,
+        [request.quantity, request.product_id]
+      );
+    }
+
+    const updated = await req.db.query(
+      `UPDATE return_requests
+          SET status = $1, resolved_at = NOW()
+        WHERE id = $2
+        RETURNING *`,
+      [status, id]
+    );
+
+    await req.db.query('COMMIT');
+    res.json({ message: `Return request ${status}`, request: updated.rows[0] });
+  } catch (err) {
+    try { await req.db.query('ROLLBACK'); } catch (_) {}
+    console.error('Error processing return request:', err);
+    res.status(500).json({ error: 'Failed to process return request' });
+  }
 });
 
 module.exports = router;

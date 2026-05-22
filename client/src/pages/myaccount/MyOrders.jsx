@@ -26,9 +26,21 @@ const MyOrders = () => {
   const [confirmingId, setConfirmingId] = useState(null);
   const [cancellingId, setCancellingId] = useState(null);
   const [cancelError, setCancelError]   = useState("");
+  const [returns, setReturns]           = useState([]);
+  const [returnItem, setReturnItem]     = useState(null);   // the order item being returned
+  const [returnReason, setReturnReason] = useState("");
+  const [returnBusy, setReturnBusy]     = useState(false);
+  const [returnError, setReturnError]   = useState("");
 
   const user        = JSON.parse(localStorage.getItem("user") || "null");
   const currentUser = user?.user || user;
+
+  const loadReturns = (userId) => {
+    fetch(`http://localhost:5001/api/returns/my/${userId}`)
+      .then((r) => r.json())
+      .then((data) => setReturns(Array.isArray(data) ? data : []))
+      .catch(() => {});
+  };
 
   useEffect(() => {
     if (!currentUser?.id) { navigate("/login"); return; }
@@ -36,9 +48,43 @@ const MyOrders = () => {
       .then((r) => { if (!r.ok) throw new Error(); return r.json(); })
       .then((data) => { setOrders(data); setLoading(false); })
       .catch(() => { setError("Failed to load orders."); setLoading(false); });
+    loadReturns(currentUser.id);
   }, [currentUser?.id]);
 
   const toggle = (id) => setExpanded((prev) => (prev === id ? null : id));
+
+  // Map order_item_id -> return request
+  const returnByItem = {};
+  returns.forEach((r) => { returnByItem[r.order_item_id] = r; });
+
+  const handleSubmitReturn = async () => {
+    if (!returnItem) return;
+    setReturnBusy(true);
+    setReturnError("");
+    try {
+      const res = await fetch(`http://localhost:5001/api/returns`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId: currentUser.id,
+          orderItemId: returnItem.order_item_id,
+          reason: returnReason.trim() || null
+        })
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok) {
+        loadReturns(currentUser.id);
+        setReturnItem(null);
+        setReturnReason("");
+      } else {
+        setReturnError(data.error || "Failed to submit return request.");
+      }
+    } catch {
+      setReturnError("Network error. Please try again.");
+    } finally {
+      setReturnBusy(false);
+    }
+  };
 
   const handleCancel = async (orderId) => {
     setCancellingId(orderId);
@@ -125,7 +171,10 @@ const MyOrders = () => {
               <div style={{ borderTop: "1px solid #F3F4F6", padding: "1.5rem" }}>
                 <p style={s.sectionLabel}>ITEMS</p>
                 <div style={{ display: "flex", flexDirection: "column", gap: "10px", marginBottom: "1.5rem" }}>
-                  {order.items?.map((item, idx) => (
+                  {order.items?.map((item, idx) => {
+                    const ret = returnByItem[item.order_item_id];
+                    const canReturn = order.status === "delivered" && !ret && item.order_item_id;
+                    return (
                     <div key={idx} style={s.itemRow}>
                       <div style={s.itemImg}>
                         {item.image_url
@@ -135,10 +184,33 @@ const MyOrders = () => {
                       <div style={{ flex: 1 }}>
                         <div style={{ fontWeight: "600", color: "#111827", fontSize: "0.9rem" }}>{item.name || "Product"}</div>
                         <div style={{ color: "#9CA3AF", fontSize: "0.8rem", marginTop: "2px" }}>{item.quantity} × {fmt.price(item.price_at_purchase)}</div>
+                        {ret && (
+                          <div style={{ marginTop: "5px" }}>
+                            <span style={{
+                              display: "inline-flex", alignItems: "center", gap: "5px",
+                              background: getStatus(ret.status === "approved" ? "delivered" : ret.status === "rejected" ? "cancelled" : "pending").bg,
+                              color: getStatus(ret.status === "approved" ? "delivered" : ret.status === "rejected" ? "cancelled" : "pending").color,
+                              padding: "2px 9px", borderRadius: "999px", fontSize: "0.7rem", fontWeight: "700"
+                            }}>
+                              Return {ret.status}
+                            </span>
+                          </div>
+                        )}
                       </div>
-                      <div style={{ fontWeight: "700", color: "#111827", fontSize: "0.9rem" }}>{fmt.price(item.quantity * item.price_at_purchase)}</div>
+                      <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "6px" }}>
+                        <div style={{ fontWeight: "700", color: "#111827", fontSize: "0.9rem" }}>{fmt.price(item.quantity * item.price_at_purchase)}</div>
+                        {canReturn && (
+                          <button
+                            onClick={() => { setReturnItem(item); setReturnReason(""); setReturnError(""); }}
+                            style={{ background: "#fff", color: "var(--pazaryolu-red)", border: "1.5px solid #FCA5A5", padding: "0.35rem 0.8rem", borderRadius: "8px", fontWeight: "700", fontSize: "0.75rem", cursor: "pointer" }}
+                          >
+                            Return Item
+                          </button>
+                        )}
+                      </div>
                     </div>
-                  ))}
+                    );
+                  })}
                 </div>
                 <div style={{ display: "flex", justifyContent: "flex-end", borderTop: "1px solid #F3F4F6", paddingTop: "1rem", marginBottom: "1.5rem" }}>
                   <span style={{ color: "#6B7280", fontSize: "0.9rem", marginRight: "1rem" }}>Order Total</span>
@@ -216,6 +288,55 @@ const MyOrders = () => {
                 style={{ background: "#DC2626", color: "#fff", border: "none", padding: "0.65rem 1.4rem", borderRadius: "10px", fontWeight: "700", cursor: cancellingId ? "wait" : "pointer" }}
               >
                 {cancellingId ? "Cancelling…" : "Yes, Cancel"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {returnItem && (
+        <div
+          onClick={() => !returnBusy && setReturnItem(null)}
+          style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{ background: "#fff", borderRadius: "16px", padding: "1.75rem", width: "100%", maxWidth: "440px", boxShadow: "0 20px 50px rgba(0,0,0,0.25)" }}
+          >
+            <h3 style={{ margin: "0 0 0.4rem", fontWeight: "800", color: "#111", fontSize: "1.1rem" }}>Return Item</h3>
+            <p style={{ margin: "0 0 1.1rem", color: "#6B7280", fontSize: "0.9rem", lineHeight: 1.5 }}>
+              <strong style={{ color: "#111" }}>{returnItem.name}</strong> — {returnItem.quantity} × {fmt.price(returnItem.price_at_purchase)}.
+              Your request will be reviewed by our team.
+            </p>
+            <label style={{ display: "block", fontSize: "0.75rem", fontWeight: "700", color: "#6B7280", letterSpacing: "0.05em", marginBottom: "0.4rem" }}>
+              REASON (optional)
+            </label>
+            <textarea
+              value={returnReason}
+              onChange={(e) => setReturnReason(e.target.value)}
+              rows="3"
+              placeholder="Tell us why you're returning this item…"
+              style={{ width: "100%", boxSizing: "border-box", padding: "0.7rem 0.85rem", borderRadius: "10px", border: "1.5px solid #E5E7EB", fontSize: "0.9rem", fontFamily: "inherit", resize: "vertical", marginBottom: "1rem" }}
+            />
+            {returnError && (
+              <p style={{ background: "#FEF2F2", color: "#DC2626", padding: "0.6rem 0.85rem", borderRadius: "8px", margin: "0 0 1rem", fontSize: "0.85rem", fontWeight: "600" }}>
+                {returnError}
+              </p>
+            )}
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: "0.6rem" }}>
+              <button
+                onClick={() => setReturnItem(null)}
+                disabled={returnBusy}
+                style={{ background: "#E5E7EB", color: "#111", border: "none", padding: "0.65rem 1.2rem", borderRadius: "10px", fontWeight: "700", cursor: returnBusy ? "wait" : "pointer" }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSubmitReturn}
+                disabled={returnBusy}
+                style={{ background: "var(--pazaryolu-red)", color: "#fff", border: "none", padding: "0.65rem 1.4rem", borderRadius: "10px", fontWeight: "700", cursor: returnBusy ? "wait" : "pointer" }}
+              >
+                {returnBusy ? "Submitting…" : "Submit Return"}
               </button>
             </div>
           </div>
