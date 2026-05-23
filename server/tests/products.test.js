@@ -53,6 +53,17 @@ describe('GET /api/products/:id', () => {
     });
 });
 
+describe('POST /api/products/checkout', () => {
+    test('rejects the deprecated stock-only checkout path', async () => {
+        const res = await request(app).post('/api/products/checkout').send({
+            items: [{ id: 1, quantity: 1 }]
+        });
+
+        expect(res.status).toBe(410);
+        expect(mockDb.query).not.toHaveBeenCalled();
+    });
+});
+
 describe('GET /api/products/:id/reviews', () => {
     test('returns only approved reviews for a product', async () => {
         mockDb.query.mockResolvedValueOnce({
@@ -63,6 +74,7 @@ describe('GET /api/products/:id/reviews', () => {
 
         expect(res.status).toBe(200);
         expect(res.body[0].rating).toBe(5);
+        expect(mockDb.query.mock.calls[0][0]).toMatch(/r\.status = 'approved'/);
     });
 });
 

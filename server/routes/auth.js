@@ -31,7 +31,7 @@ router.get('/verify/:id', async (req, res) => {
 
 // sign in user things
 router.post('/register', registerLimiter, async (req, res) => {
-    const { name, email, phone, password } = req.body;
+    const { name, email, phone, password, tax_id, home_address } = req.body;
 
     // Validate every field before touching the database — missing fields
     // previously caused an unhandled crash (500).
@@ -51,6 +51,8 @@ router.post('/register', registerLimiter, async (req, res) => {
 
     const cleanName = String(name).trim();
     const cleanEmail = String(email).trim();
+    const cleanTaxId = tax_id ? String(tax_id).replace(/\D/g, '') : null;
+    const cleanHomeAddress = home_address ? String(home_address).trim() : null;
 
     try {
         const duplicate = await req.db.query(
@@ -65,8 +67,8 @@ router.post('/register', registerLimiter, async (req, res) => {
         const hashedPassword = await bcrypt.hash(password, SALT_ROUNDS);
 
         const result = await req.db.query(
-            'INSERT INTO users (name, email, phone, password, role) VALUES ($1, $2, $3, $4, $5) RETURNING id, name, email, role',
-            [cleanName, cleanEmail, phoneDigits, hashedPassword, 'customer']
+            'INSERT INTO users (name, email, phone, tax_id, home_address, password, role) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id, name, email, phone, tax_id, home_address, role',
+            [cleanName, cleanEmail, phoneDigits, cleanTaxId, cleanHomeAddress, hashedPassword, 'customer']
         );
 
         res.status(201).json({ message: 'User registered successfully!', user: result.rows[0] });
@@ -112,7 +114,7 @@ router.post('/login', loginLimiter, async (req, res) => {
 // update user profile
 router.put('/update/:id', async (req, res) => {
     const { id } = req.params;
-    const { name, email, phone, password } = req.body;
+    const { name, email, phone, password, tax_id, home_address } = req.body;
 
     try {
         const existing = await req.db.query('SELECT * FROM users WHERE id = $1', [id]);
@@ -130,9 +132,17 @@ router.put('/update/:id', async (req, res) => {
         }
 
         const result = await req.db.query(
-            `UPDATE users SET name=$1, email=$2, phone=$3, password=$4 WHERE id=$5
-             RETURNING id, name, email, phone, role`,
-            [name, email, phone ? phone.replace(/\D/g, '') : existing.rows[0].phone, hashedPassword, id]
+            `UPDATE users SET name=$1, email=$2, phone=$3, tax_id=$4, home_address=$5, password=$6 WHERE id=$7
+             RETURNING id, name, email, phone, tax_id, home_address, role`,
+            [
+                name,
+                email,
+                phone ? phone.replace(/\D/g, '') : existing.rows[0].phone,
+                tax_id ? String(tax_id).replace(/\D/g, '') : existing.rows[0].tax_id,
+                home_address !== undefined ? String(home_address).trim() : existing.rows[0].home_address,
+                hashedPassword,
+                id
+            ]
         );
 
         res.json({ message: 'Profile updated successfully', user: result.rows[0] });

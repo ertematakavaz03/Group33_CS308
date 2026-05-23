@@ -67,7 +67,7 @@ router.post('/checkout', async (req, res) => {
     const orderResult = await req.db.query(
       `INSERT INTO orders (user_id, total_amount, shipping_address_id, billing_address_id, status)
        VALUES ($1, $2, $3, $4, 'processing') RETURNING id`,
-       [userId, calculatedTotal, shippingAddressId, billingAddressId]
+       [userId, totalAmount, shippingAddressId, billingAddressId]
     );
     const orderId = orderResult.rows[0].id;
 

@@ -13,7 +13,7 @@ router.post('/', async (req, res) => {
     // Fetch the order item together with its parent order
     const itemResult = await req.db.query(
       `SELECT oi.id AS order_item_id, oi.order_id, oi.product_id, oi.quantity,
-              o.user_id, o.status AS order_status
+              o.user_id, o.status AS order_status, o.created_at AS order_created_at
        FROM order_items oi
        JOIN orders o ON o.id = oi.order_id
        WHERE oi.id = $1`,
@@ -30,6 +30,11 @@ router.post('/', async (req, res) => {
     }
     if (item.order_status !== 'delivered') {
       return res.status(400).json({ error: 'Only delivered orders can be returned' });
+    }
+    const purchasedAt = new Date(item.order_created_at);
+    const thirtyDaysMs = 30 * 24 * 60 * 60 * 1000;
+    if (!Number.isFinite(purchasedAt.getTime()) || Date.now() - purchasedAt.getTime() > thirtyDaysMs) {
+      return res.status(400).json({ error: 'Products can only be returned within 30 days of purchase' });
     }
 
     const existing = await req.db.query(

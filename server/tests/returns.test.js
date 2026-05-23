@@ -11,7 +11,7 @@ app.use('/api/returns', returnsRoutes);
 describe('POST /api/returns', () => {
     test('creates a return request for a delivered order item', async () => {
         mockDb.query
-            .mockResolvedValueOnce({ rows: [{ order_item_id: 15, order_id: 7, product_id: 8, quantity: 1, user_id: 4, order_status: 'delivered' }] }) // item lookup
+            .mockResolvedValueOnce({ rows: [{ order_item_id: 15, order_id: 7, product_id: 8, quantity: 1, user_id: 4, order_status: 'delivered', order_created_at: new Date() }] }) // item lookup
             .mockResolvedValueOnce({ rows: [] })                                  // no existing return
             .mockResolvedValueOnce({ rows: [{ id: 1, order_id: 7, status: 'pending' }] }); // INSERT
 
@@ -52,10 +52,22 @@ describe('POST /api/returns', () => {
 
     test('returns 400 when a return request already exists for the item', async () => {
         mockDb.query
-            .mockResolvedValueOnce({ rows: [{ order_item_id: 15, order_id: 7, product_id: 8, quantity: 1, user_id: 4, order_status: 'delivered' }] })
+            .mockResolvedValueOnce({ rows: [{ order_item_id: 15, order_id: 7, product_id: 8, quantity: 1, user_id: 4, order_status: 'delivered', order_created_at: new Date() }] })
             .mockResolvedValueOnce({ rows: [{ id: 1, status: 'pending' }] });
         const res = await request(app).post('/api/returns').send({ userId: 4, orderItemId: 15 });
         expect(res.status).toBe(400);
+    });
+
+    test('returns 400 when the purchase is older than 30 days', async () => {
+        const olderThanThirtyDays = new Date(Date.now() - 31 * 24 * 60 * 60 * 1000);
+        mockDb.query.mockResolvedValueOnce({
+            rows: [{ order_item_id: 15, order_id: 7, product_id: 8, quantity: 1, user_id: 4, order_status: 'delivered', order_created_at: olderThanThirtyDays }]
+        });
+
+        const res = await request(app).post('/api/returns').send({ userId: 4, orderItemId: 15 });
+
+        expect(res.status).toBe(400);
+        expect(res.body.error).toMatch(/30 days/i);
     });
 });
 

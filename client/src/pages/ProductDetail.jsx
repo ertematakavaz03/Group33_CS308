@@ -100,7 +100,7 @@ const ProductDetail = () => {
       const data = await res.json();
       if (res.ok) {
         setReviews((prev) => [data, ...prev.filter((r) => r.id !== data.id)]);
-        setReviewStatus("Your review has been submitted and is shown below.");
+        setReviewStatus("Your review has been submitted and is awaiting approval.");
         setReviewForm({ rating: 5, comment: "" });
         setShowReviewForm(false);
         window.dispatchEvent(new Event('reviewUpdated'));
@@ -175,9 +175,9 @@ const ProductDetail = () => {
   const isOutOfStock = product.stock <= 0;
   const isLowStock = product.stock > 0 && product.stock <= 5;
   const currentUserId = user?.user?.id || user?.id;
-  // All reviews count toward the star average regardless of approval status
-  const avgRating = reviews.length > 0
-    ? (reviews.reduce((a, b) => a + b.rating, 0) / reviews.length).toFixed(1)
+  const approvedReviews = reviews.filter(r => r.status === 'approved');
+  const avgRating = approvedReviews.length > 0
+    ? (approvedReviews.reduce((a, b) => a + b.rating, 0) / approvedReviews.length).toFixed(1)
     : null;
   const visibleReviews = reviews.filter(r => r.status === 'approved' || r.user_id === currentUserId);
 
@@ -191,7 +191,7 @@ const ProductDetail = () => {
   const tabs = [
     { key: 'description', label: 'Description' },
     { key: 'specifications', label: 'Specifications' },
-    { key: 'reviews', label: `Reviews (${reviews.length})` },
+    { key: 'reviews', label: `Reviews (${visibleReviews.length})` },
   ];
 
   const hasSpecs = product.warranty || product.distributor || product.serial_no || product.model || product.category;
@@ -340,7 +340,7 @@ const ProductDetail = () => {
               <span style={{ fontWeight: "800", color: "#111", fontSize: "1rem" }}>
                 {avgRating || "No ratings yet"}
               </span>
-              <span style={{ color: "#9ca3af", fontSize: "0.85rem" }}>({reviews.length} reviews)</span>
+              <span style={{ color: "#9ca3af", fontSize: "0.85rem" }}>({visibleReviews.length} reviews)</span>
               <button
                 onClick={handleSeeReviews}
                 style={{ background: "none", border: "none", color: "#b91c1c", fontSize: "0.82rem", fontWeight: "700", cursor: "pointer", padding: 0, textDecoration: "underline" }}
@@ -508,7 +508,7 @@ const ProductDetail = () => {
                       Customer Reviews
                       {avgRating && <span style={{ marginLeft: "0.75rem", color: "#fbbf24", fontWeight: "700" }}>★ {avgRating}</span>}
                     </h3>
-                    <p style={{ margin: "3px 0 0", fontSize: "0.82rem", color: "#9ca3af" }}>{reviews.length} review{reviews.length !== 1 ? 's' : ''}</p>
+                    <p style={{ margin: "3px 0 0", fontSize: "0.82rem", color: "#9ca3af" }}>{visibleReviews.length} review{visibleReviews.length !== 1 ? 's' : ''}</p>
                   </div>
                   {hasPurchased && !showReviewForm && (
                     <button

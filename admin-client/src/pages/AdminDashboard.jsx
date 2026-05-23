@@ -27,7 +27,8 @@ const AdminDashboard = () => {
   const [editProduct, setEditProduct] = useState(null);
   const [form, setForm] = useState({ name: "", model: "", serial_no: "", description: "", stock: "", price: "", warranty: "", distributor: "", category: "", image_url: "" });
   const [discountProduct, setDiscountProduct] = useState(null);
-  const [discountForm, setDiscountForm] = useState({ discount_percentage: "", discount_start: "", discount_end: "" });
+  const [discountForm, setDiscountForm] = useState({ price: "", discount_percentage: "", discount_start: "", discount_end: "" });
+  const [dateFilter, setDateFilter] = useState({ startDate: "", endDate: "" });
 
   const token = localStorage.getItem("adminToken");
   const adminRole = localStorage.getItem("adminRole");
@@ -36,6 +37,11 @@ const AdminDashboard = () => {
     name: `#${order.id}`,
     total: Number(order.total_amount || 0)
   }));
+  const grossRevenue = orders.reduce((sum, order) => sum + Number(order.total_amount || 0), 0);
+  const approvedRefunds = returns
+    .filter((r) => r.status === "approved")
+    .reduce((sum, r) => sum + Number(r.refund_amount || (Number(r.price_at_purchase || 0) * Number(r.quantity || 0))), 0);
+  const netProfit = grossRevenue - approvedRefunds;
 
   const fetchAll = useCallback(() => {
     // Resilient loader: handles an expired/invalid session (401) by sending
@@ -56,12 +62,17 @@ const AdminDashboard = () => {
         .catch(console.error);
     };
 
+    const orderParams = new URLSearchParams();
+    if (dateFilter.startDate) orderParams.set("startDate", dateFilter.startDate);
+    if (dateFilter.endDate) orderParams.set("endDate", dateFilter.endDate);
+    const orderPath = `orders${orderParams.toString() ? `?${orderParams.toString()}` : ""}`;
+
     authedGet("products", setProducts);
-    authedGet("orders", setOrders, adminRole === "sales_manager");
+    authedGet(orderPath, setOrders, adminRole === "sales_manager");
     authedGet("returns", setReturns, adminRole === "sales_manager");
     authedGet("deliveries", setDeliveries, adminRole === "product_manager");
     authedGet("reviews", setReviews);
-  }, [token, adminRole, navigate]);
+  }, [token, adminRole, navigate, dateFilter.startDate, dateFilter.endDate]);
 
   const toLocalInput = (iso) => {
     if (!iso) return "";
@@ -73,6 +84,7 @@ const AdminDashboard = () => {
   const openDiscount = (p) => {
     setDiscountProduct(p);
     setDiscountForm({
+      price: p.price ? String(p.price) : "",
       discount_percentage: p.discount_percentage ? String(p.discount_percentage) : "",
       discount_start: toLocalInput(p.discount_start),
       discount_end: toLocalInput(p.discount_end)
@@ -81,6 +93,17 @@ const AdminDashboard = () => {
 
   const handleSaveDiscount = async (e) => {
     e.preventDefault();
+    const priceRes = await fetch(`http://localhost:5002/api/admin/products/${discountProduct.id}/price`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ price: Number(discountForm.price) })
+    });
+    if (!priceRes.ok) {
+      const data = await priceRes.json().catch(() => ({}));
+      alert(data.error || "Failed to save price");
+      return;
+    }
+
     const res = await fetch(`http://localhost:5002/api/admin/products/${discountProduct.id}/discount`, {
       method: "PUT",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
@@ -452,12 +475,21 @@ const AdminDashboard = () => {
         {/* ORDERS TAB */}
         {activeTab === "Orders" && (
           <>
-            <h2 style={{ marginTop: 0, fontWeight: "800" }}>Orders ({orders.length})</h2>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "1rem", marginBottom: "1rem", flexWrap: "wrap" }}>
+              <h2 style={{ margin: 0, fontWeight: "800" }}>Orders & Invoices ({orders.length})</h2>
+              <div style={{ display: "flex", gap: "0.6rem", alignItems: "center", flexWrap: "wrap" }}>
+                <input type="date" value={dateFilter.startDate} onChange={(e) => setDateFilter({ ...dateFilter, startDate: e.target.value })} style={fInputStyle} />
+                <input type="date" value={dateFilter.endDate} onChange={(e) => setDateFilter({ ...dateFilter, endDate: e.target.value })} style={fInputStyle} />
+                {(dateFilter.startDate || dateFilter.endDate) && (
+                  <button onClick={() => setDateFilter({ startDate: "", endDate: "" })} style={{ background: "#e5e7eb", color: "#111", border: "none", padding: "0.6rem 1rem", borderRadius: "8px", cursor: "pointer", fontWeight: "700" }}>Clear</button>
+                )}
+              </div>
+            </div>
             <div style={{ overflowX: "auto" }}>
               <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.9rem" }}>
                 <thead>
                   <tr style={{ borderBottom: "2px solid #f3f4f6" }}>
-                  {["ID", "User", "Items", "Delivery Address", "Total", "Status", "Date"].map(h => (
+                  {["ID", "User", "Items", "Delivery Address", "Total", "Status", "Date", "Invoice"].map(h => (
                       <th key={h} style={{ textAlign: "left", padding: "0.7rem 1rem", color: "#6b7280", fontWeight: "700", fontSize: "0.8rem", textTransform: "uppercase" }}>{h}</th>
                     ))}
                   </tr>
@@ -517,6 +549,14 @@ const AdminDashboard = () => {
 )}
                       </td>
                       <td style={{ padding: "0.7rem 1rem", color: "#6b7280" }}>{o.created_at ? new Date(o.created_at).toLocaleDateString() : "-"}</td>
+                      <td style={{ padding: "0.7rem 1rem" }}>
+                        <button
+                          onClick={() => window.open(`http://localhost:5001/api/orders/${o.id}/invoice`, "_blank", "noopener,noreferrer")}
+                          style={{ background: "#f3f4f6", color: "#374151", border: "none", padding: "0.4rem 0.8rem", borderRadius: "6px", cursor: "pointer", fontWeight: "700" }}
+                        >
+                          PDF
+                        </button>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -581,14 +621,18 @@ const AdminDashboard = () => {
         {/* REVENUE TAB */}
 {activeTab === "Revenue" && (
   <>
-    <h2 style={{ marginTop: 0, fontWeight: "800" }}>
-      Sales Analytics
-    </h2>
+    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "1rem", flexWrap: "wrap" }}>
+      <h2 style={{ margin: 0, fontWeight: "800" }}>Sales Analytics</h2>
+      <div style={{ display: "flex", gap: "0.6rem", alignItems: "center", flexWrap: "wrap" }}>
+        <input type="date" value={dateFilter.startDate} onChange={(e) => setDateFilter({ ...dateFilter, startDate: e.target.value })} style={fInputStyle} />
+        <input type="date" value={dateFilter.endDate} onChange={(e) => setDateFilter({ ...dateFilter, endDate: e.target.value })} style={fInputStyle} />
+      </div>
+    </div>
 
     <div
       style={{
         display: "grid",
-        gridTemplateColumns: "repeat(3, 1fr)",
+        gridTemplateColumns: "repeat(4, 1fr)",
         gap: "1rem",
         marginTop: "1.5rem"
       }}
@@ -596,14 +640,21 @@ const AdminDashboard = () => {
       <div style={analyticsCard}>
         <h3>Total Revenue</h3>
         <p style={analyticsValue}>
-          $
-          {orders
-            .reduce(
-              (sum, order) =>
-                sum + Number(order.total_amount || 0),
-              0
-            )
-            .toFixed(2)}
+          ${grossRevenue.toFixed(2)}
+        </p>
+      </div>
+
+      <div style={analyticsCard}>
+        <h3>Refund Loss</h3>
+        <p style={analyticsValue}>
+          ${approvedRefunds.toFixed(2)}
+        </p>
+      </div>
+
+      <div style={analyticsCard}>
+        <h3>Net Profit</h3>
+        <p style={analyticsValue}>
+          ${netProfit.toFixed(2)}
         </p>
       </div>
 
@@ -611,23 +662,6 @@ const AdminDashboard = () => {
         <h3>Total Orders</h3>
         <p style={analyticsValue}>
           {orders.length}
-        </p>
-      </div>
-
-      <div style={analyticsCard}>
-        <h3>Average Order Value</h3>
-        <p style={analyticsValue}>
-          $
-          {orders.length > 0
-            ? (
-                orders.reduce(
-                  (sum, order) =>
-                    sum +
-                    Number(order.total_amount || 0),
-                  0
-                ) / orders.length
-              ).toFixed(2)
-            : "0.00"}
         </p>
       </div>
     </div>
@@ -756,7 +790,12 @@ const AdminDashboard = () => {
                         <div style={{ color: "#9ca3af", fontSize: "0.78rem" }}>{r.user_email}</div>
                       </td>
                       <td style={{ padding: "0.7rem 1rem" }}>{r.quantity}</td>
-                      <td style={{ padding: "0.7rem 1rem", maxWidth: "240px", color: "#374151" }}>{r.reason || <span style={{ color: "#9ca3af" }}>—</span>}</td>
+                      <td style={{ padding: "0.7rem 1rem", maxWidth: "240px", color: "#374151" }}>
+                        {r.reason || <span style={{ color: "#9ca3af" }}>—</span>}
+                        <div style={{ marginTop: "4px", color: "#b91c1c", fontWeight: "700", fontSize: "0.78rem" }}>
+                          Refund ${Number(r.refund_amount || (Number(r.price_at_purchase || 0) * Number(r.quantity || 0))).toFixed(2)}
+                        </div>
+                      </td>
                       <td style={{ padding: "0.7rem 1rem", color: "#6b7280" }}>{new Date(r.created_at).toLocaleDateString()}</td>
                       <td style={{ padding: "0.7rem 1rem" }}>
                         <span style={{
@@ -806,6 +845,16 @@ const AdminDashboard = () => {
             <p style={{ margin: "0 0 1.25rem", color: "#6b7280", fontSize: "0.85rem" }}>{discountProduct.name}</p>
 
             <form onSubmit={handleSaveDiscount}>
+              <div style={{ marginBottom: "1rem" }}>
+                <label style={{ fontSize: "0.78rem", fontWeight: "700", color: "#6b7280", display: "block", marginBottom: "4px" }}>Base Price</label>
+                <input
+                  type="number" min="0" step="0.01"
+                  value={discountForm.price}
+                  onChange={(e) => setDiscountForm({ ...discountForm, price: e.target.value })}
+                  required
+                  style={fInputStyle}
+                />
+              </div>
               <div style={{ marginBottom: "1rem" }}>
                 <label style={{ fontSize: "0.78rem", fontWeight: "700", color: "#6b7280", display: "block", marginBottom: "4px" }}>Percentage (0–99)</label>
                 <input

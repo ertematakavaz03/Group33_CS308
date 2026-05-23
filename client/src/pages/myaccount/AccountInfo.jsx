@@ -1,6 +1,8 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 const AccountInfo = () => {
+  const navigate = useNavigate();
   const raw = JSON.parse(localStorage.getItem("user"));
   const currentUser = raw?.user || raw;
 
@@ -8,15 +10,27 @@ const AccountInfo = () => {
     name: currentUser?.name || '',
     email: currentUser?.email || '',
     phone: currentUser?.phone || '',
+    tax_id: currentUser?.tax_id || '',
     password: '',
     confirmPassword: '',
   });
   const [isEditing, setIsEditing] = useState(false);
   const [status, setStatus] = useState({ msg: '', error: false });
   const [isApplying, setIsApplying] = useState(false);
+  const [addresses, setAddresses] = useState([]);
+
+  useEffect(() => {
+    if (!currentUser?.id) return;
+    fetch(`http://localhost:5001/api/addresses/${currentUser.id}`)
+      .then((res) => res.json())
+      .then((data) => setAddresses(Array.isArray(data) ? data : []))
+      .catch(() => setAddresses([]));
+  }, [currentUser?.id]);
 
   const initials = (currentUser?.name || "U").split(" ").map(w => w[0]).join("").toUpperCase().slice(0, 2);
   const roleLabel = currentUser?.role ? currentUser.role.charAt(0).toUpperCase() + currentUser.role.slice(1) : "";
+  const defaultAddress = addresses.find((a) => a.is_default) || addresses[0];
+  const legacyHomeAddress = currentUser?.home_address;
 
   const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
 
@@ -33,7 +47,13 @@ const AccountInfo = () => {
       const res = await fetch(`http://localhost:5001/api/auth/update/${currentUser.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: form.name, email: form.email, phone: form.phone, password: form.password || '' })
+        body: JSON.stringify({
+          name: form.name,
+          email: form.email,
+          phone: form.phone,
+          tax_id: form.tax_id,
+          password: form.password || ''
+        })
       });
       const data = await res.json();
       if (!res.ok) { setStatus({ msg: data.error || "Update failed.", error: true }); return; }
@@ -103,6 +123,34 @@ const AccountInfo = () => {
               ? <input name="phone" type="tel" value={form.phone} onChange={handleChange} style={s.input} placeholder="5xxxxxxxxx" />
               : <div style={s.value}>{currentUser?.phone || '—'}</div>}
           </div>
+          <div>
+            <label style={s.label}>Tax ID</label>
+            {isEditing
+              ? <input name="tax_id" value={form.tax_id} onChange={handleChange} style={s.input} placeholder="Optional" />
+              : <div style={s.value}>{currentUser?.tax_id || '—'}</div>}
+          </div>
+        </div>
+
+        <div style={s.addressSummary}>
+          <div>
+            <label style={s.label}>Default Address</label>
+            {defaultAddress ? (
+              <>
+                <div style={{ fontWeight: "800", color: "#111827", marginTop: "0.35rem" }}>{defaultAddress.title}</div>
+                <div style={{ color: "#4B5563", fontSize: "0.9rem", marginTop: "0.25rem", lineHeight: 1.45 }}>{defaultAddress.full_address}</div>
+                <div style={{ color: "#9CA3AF", fontSize: "0.8rem", marginTop: "0.2rem" }}>
+                  {[defaultAddress.district, defaultAddress.city, defaultAddress.postal_code].filter(Boolean).join(", ")}
+                </div>
+              </>
+            ) : legacyHomeAddress ? (
+              <div style={{ color: "#4B5563", fontSize: "0.9rem", marginTop: "0.35rem", lineHeight: 1.45 }}>{legacyHomeAddress}</div>
+            ) : (
+              <div style={{ color: "#9CA3AF", fontSize: "0.9rem", marginTop: "0.35rem" }}>No default address yet.</div>
+            )}
+          </div>
+          <button onClick={() => navigate('/myaccount/addresses')} style={s.ghostBtn}>
+            Manage Addresses
+          </button>
         </div>
 
         {isEditing && (
@@ -151,6 +199,7 @@ const s = {
   label:      { display: "block", fontSize: "0.75rem", fontWeight: "700", color: "#9CA3AF", marginBottom: "5px", letterSpacing: "0.04em" },
   value:      { fontSize: "0.95rem", fontWeight: "600", color: "#111827", padding: "0.65rem 0" },
   input:      { width: "100%", padding: "0.7rem 0.9rem", borderRadius: "9px", border: "1.5px solid #E5E7EB", fontSize: "0.9rem", background: "#f9fafb", color: "#111", boxSizing: "border-box" },
+  addressSummary: { marginTop: "1.25rem", borderTop: "1px solid #F3F4F6", paddingTop: "1.25rem", display: "flex", justifyContent: "space-between", alignItems: "center", gap: "1rem" },
   editBtn:    { display: "flex", alignItems: "center", gap: "6px", background: "none", border: "1.5px solid #E5E7EB", color: "#374151", borderRadius: "10px", padding: "0.5rem 1rem", fontWeight: "600", fontSize: "0.85rem", cursor: "pointer" },
   primaryBtn: { padding: "0.7rem 1.4rem", background: "var(--pazaryolu-red)", color: "#fff", border: "none", borderRadius: "10px", fontWeight: "700", fontSize: "0.875rem", cursor: "pointer", whiteSpace: "nowrap" },
   ghostBtn:   { background: "none", border: "1.5px solid #E5E7EB", color: "#374151", borderRadius: "10px", padding: "0.7rem 1.25rem", fontWeight: "600", fontSize: "0.875rem", cursor: "pointer" },

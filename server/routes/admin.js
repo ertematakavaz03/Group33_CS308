@@ -174,6 +174,23 @@ router.delete('/products/:id', auth, requireRole("product_manager"), async (req,
   } catch (err) { console.error('Admin route error:', err); res.status(500).json({ error: 'Internal server error' }); }
 });
 
+// Sales managers own pricing decisions.
+router.put('/products/:id/price', auth, requireRole("sales_manager"), async (req, res) => {
+  const price = Number(req.body.price);
+  if (!Number.isFinite(price) || price < 0) {
+    return res.status(400).json({ error: 'price must be a non-negative number' });
+  }
+
+  try {
+    const result = await req.db.query(
+      'UPDATE products SET price = $1 WHERE id = $2 RETURNING *',
+      [price, req.params.id]
+    );
+    if (result.rows.length === 0) return res.status(404).json({ error: 'Product not found' });
+    res.json(result.rows[0]);
+  } catch (err) { console.error('Admin route error:', err); res.status(500).json({ error: 'Internal server error' }); }
+});
+
 // Set / update a product's discount (dynamic, date-ranged)
 router.put('/products/:id/discount', auth, requireRole("sales_manager"), async (req, res) => {
   const { discount_percentage, discount_start, discount_end } = req.body;
@@ -223,6 +240,18 @@ router.delete('/products/:id/discount', auth, requireRole("sales_manager"), asyn
 // Orders
 router.get('/orders', auth, async (req, res) => {
   try {
+    const { startDate, endDate } = req.query;
+    const filters = [];
+    const params = [];
+    if (startDate) {
+      params.push(startDate);
+      filters.push(`o.created_at >= $${params.length}`);
+    }
+    if (endDate) {
+      params.push(`${endDate} 23:59:59`);
+      filters.push(`o.created_at <= $${params.length}`);
+    }
+
     const result = await req.db.query(
       `SELECT 
           o.*,
@@ -245,8 +274,10 @@ router.get('/orders', auth, async (req, res) => {
        LEFT JOIN addresses a ON o.shipping_address_id = a.id
        LEFT JOIN order_items oi ON o.id = oi.order_id
        LEFT JOIN products p ON oi.product_id = p.id
+       ${filters.length ? `WHERE ${filters.join(' AND ')}` : ''}
        GROUP BY o.id, u.email, u.name, a.full_address, a.city, a.district
-       ORDER BY o.created_at DESC`
+       ORDER BY o.created_at DESC`,
+      params
     );
     res.json(result.rows);
   } catch (error) {
@@ -273,7 +304,7 @@ router.get('/orders/:id', auth, async (req, res) => {
   }
 });
 
-router.put('/orders/:id/status', auth, async (req, res) => {
+router.put('/orders/:id/status', auth, requireRole("product_manager"), async (req, res) => {
   try {
     const { id } = req.params;
     const { status } = req.body;
@@ -333,7 +364,7 @@ router.get('/users', auth, async (req, res) => {
 });
 
 // Reviews
-router.get('/reviews', auth, async (req, res) => {
+router.get('/reviews', auth, requireRole("product_manager"), async (req, res) => {
     try {
         const result = await req.db.query(
             `SELECT r.*, p.name as product_name, u.name as user_name 
@@ -346,7 +377,7 @@ router.get('/reviews', auth, async (req, res) => {
     } catch (err) { console.error('Admin route error:', err); res.status(500).json({ error: 'Internal server error' }); }
 });
 
-router.put('/reviews/:id/status', auth, async (req, res) => {
+router.put('/reviews/:id/status', auth, requireRole("product_manager"), async (req, res) => {
     const { status } = req.body;
     if (!['pending', 'approved', 'rejected'].includes(status)) {
         return res.status(400).json({ error: 'Invalid status' });
@@ -369,7 +400,8 @@ router.get('/returns', auth, requireRole("sales_manager"), async (req, res) => {
               p.name AS product_name,
               u.name AS user_name,
               u.email AS user_email,
-              oi.price_at_purchase
+              oi.price_at_purchase,
+              (oi.price_at_purchase * rr.quantity) AS refund_amount
        FROM return_requests rr
        LEFT JOIN products p ON p.id = rr.product_id
        LEFT JOIN users u ON u.id = rr.user_id

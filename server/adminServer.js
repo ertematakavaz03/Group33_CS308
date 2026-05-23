@@ -25,7 +25,7 @@ app.use('/api/admin', adminRoutes);
 
 // Redirect root to frontend admin page
 app.get('/', (req, res) => {
-    res.redirect('http://localhost:5173/admin');
+    res.redirect('http://localhost:5174/admin');
 });
 
 const PORT = 5002;

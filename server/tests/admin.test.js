@@ -75,6 +75,11 @@ describe('GET /api/admin/reviews', () => {
         expect(res.status).toBe(200);
         expect(res.body[0].status).toBe('pending');
     });
+
+    test('rejects a sales_manager from review moderation', async () => {
+        const res = await request(app).get('/api/admin/reviews').set(smHeader);
+        expect(res.status).toBe(403);
+    });
 });
 
 describe('PUT /api/admin/reviews/:id/status', () => {
@@ -110,6 +115,49 @@ describe('PUT /api/admin/reviews/:id/status', () => {
             .send({ status: 'approved' });
 
         expect(res.status).toBe(404);
+    });
+
+    test('rejects a sales_manager from changing review status', async () => {
+        const res = await request(app)
+            .put('/api/admin/reviews/1/status')
+            .set(smHeader)
+            .send({ status: 'approved' });
+
+        expect(res.status).toBe(403);
+    });
+});
+
+describe('Sales Manager — Pricing', () => {
+    test('sales_manager can set product price', async () => {
+        mockDb.query.mockResolvedValueOnce({
+            rows: [{ id: 7, price: 199.99 }]
+        });
+
+        const res = await request(app)
+            .put('/api/admin/products/7/price')
+            .set(smHeader)
+            .send({ price: 199.99 });
+
+        expect(res.status).toBe(200);
+        expect(res.body.price).toBe(199.99);
+    });
+
+    test('rejects a product_manager from setting product price', async () => {
+        const res = await request(app)
+            .put('/api/admin/products/7/price')
+            .set(pmHeader)
+            .send({ price: 199.99 });
+
+        expect(res.status).toBe(403);
+    });
+
+    test('returns 400 for invalid product price', async () => {
+        const res = await request(app)
+            .put('/api/admin/products/7/price')
+            .set(smHeader)
+            .send({ price: -1 });
+
+        expect(res.status).toBe(400);
     });
 });
 

@@ -23,7 +23,7 @@ router.get('/', async (req, res) => {
                    END AS is_on_discount
             FROM products p
             LEFT JOIN reviews r
-              ON r.product_id = p.id
+              ON r.product_id = p.id AND r.status = 'approved'
             GROUP BY p.id
             ORDER BY p.created_at DESC
         `);
@@ -34,36 +34,10 @@ router.get('/', async (req, res) => {
     }
 });
 
-// Checkout elements and reduce stock safely
+// Deprecated: checkout must go through /api/orders/checkout so login,
+// payment, invoice, and order history rules stay together.
 router.post('/checkout', async (req, res) => {
-    const { items } = req.body;
-    if (!Array.isArray(items) || items.length === 0) {
-        return res.status(400).json({ error: 'Cart is empty' });
-    }
-
-    try {
-        await req.db.query('BEGIN'); // Start transaction
-
-        for (const item of items) {
-            // Subtract stock safely using SQL logic. Only proceeds if stock >= checkout amount.
-            const result = await req.db.query(
-                'UPDATE products SET stock = stock - $1 WHERE id = $2 AND stock >= $1 RETURNING id',
-                [item.quantity, item.id]
-            );
-
-            if (result.rows.length === 0) {
-                await req.db.query('ROLLBACK');
-                return res.status(400).json({ error: `Not enough stock available for one or more items.` });
-            }
-        }
-
-        await req.db.query('COMMIT');
-        res.json({ message: 'Checkout successful, stock reduced' });
-    } catch (err) {
-        await req.db.query('ROLLBACK');
-        console.error('Error during checkout:', err);
-        res.status(500).json({ error: 'Internal server error' });
-    }
+    res.status(410).json({ error: 'Use /api/orders/checkout for checkout.' });
 });
 
 router.get('/:id', async (req, res) => {
@@ -103,7 +77,7 @@ router.get('/:id/reviews', async (req, res) => {
             `SELECT r.id, r.user_id, r.rating, r.comment, r.status, r.created_at, u.name as user_name
              FROM reviews r
              JOIN users u ON r.user_id = u.id
-             WHERE r.product_id = $1
+             WHERE r.product_id = $1 AND r.status = 'approved'
              ORDER BY r.created_at DESC`,
             [id]
         );

@@ -95,6 +95,27 @@ const MyAddresses = () => {
     } catch { alert("Network error."); }
   };
 
+  const handleSetDefault = async (id) => {
+    const userId = currentUser?.id;
+    try {
+      const res = await fetch(`http://localhost:5001/api/addresses/${id}/default`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setSavedAddresses(prev =>
+          prev
+            .map(a => ({ ...a, is_default: a.id === data.id }))
+            .sort((a, b) => Number(b.is_default) - Number(a.is_default))
+        );
+      } else {
+        alert(data.error || "Failed to set default address");
+      }
+    } catch { alert("Network error."); }
+  };
+
   const startEdit = (addr) => {
     setEditingId(addr.id);
     setEditForm({ title: addr.title, full_address: addr.full_address, city: addr.city || "", district: addr.district || "", postal_code: addr.postal_code || "" });
@@ -176,6 +197,11 @@ const MyAddresses = () => {
                       <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>
                     </svg>
                     <span style={{ fontWeight: "700", color: "#111827", fontSize: "0.9rem" }}>{addr.title}</span>
+                    {addr.is_default && (
+                      <span style={{ marginLeft: "auto", background: "#ECFDF5", color: "#16A34A", borderRadius: "999px", padding: "2px 8px", fontSize: "0.68rem", fontWeight: "800" }}>
+                        Default
+                      </span>
+                    )}
                   </div>
                   <p style={{ margin: "0 0 3px", fontSize: "0.82rem", color: "#4B5563", lineHeight: "1.4" }}>{addr.full_address}</p>
                   <p style={{ margin: 0, fontSize: "0.77rem", color: "#9CA3AF" }}>
@@ -185,6 +211,16 @@ const MyAddresses = () => {
 
                 {/* Action buttons */}
                 <div style={{ display: "flex", gap: "0.5rem", marginTop: "0.85rem" }}>
+                  {!addr.is_default && (
+                    <button
+                      onClick={() => handleSetDefault(addr.id)}
+                      style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: "5px", padding: "0.45rem 0.75rem", background: "#ECFDF5", border: "none", borderRadius: "8px", fontWeight: "600", fontSize: "0.78rem", color: "#16A34A", cursor: "pointer", transition: "background 0.15s" }}
+                      onMouseEnter={e => e.currentTarget.style.background = '#DCFCE7'}
+                      onMouseLeave={e => e.currentTarget.style.background = '#ECFDF5'}
+                    >
+                      Default
+                    </button>
+                  )}
                   <button
                     onClick={() => startEdit(addr)}
                     style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: "5px", padding: "0.45rem 0.75rem", background: "#F3F4F6", border: "none", borderRadius: "8px", fontWeight: "600", fontSize: "0.78rem", color: "#374151", cursor: "pointer", transition: "background 0.15s" }}

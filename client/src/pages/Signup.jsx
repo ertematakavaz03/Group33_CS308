@@ -7,7 +7,9 @@ const Signup = () => {
     name: '',
     email: '',
     password: '',
-    phone: ''
+    phone: '',
+    tax_id: '',
+    home_address: ''
   });
   const [error, setError] = useState('');
 
@@ -47,6 +49,23 @@ const Signup = () => {
       localStorage.setItem('user', JSON.stringify(data));
 
       const userId = data.user?.id || data.id;
+      if (formData.home_address.trim() && userId) {
+        try {
+          await fetch(`/api/addresses`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              user_id: userId,
+              title: 'Home',
+              full_address: formData.home_address.trim(),
+              is_default: true
+            })
+          });
+        } catch {
+          // Address can still be added from My Addresses later.
+        }
+      }
+
       const guestCart = localStorage.getItem('guest_cart');
       if (guestCart && userId) {
         try {
@@ -141,6 +160,28 @@ const Signup = () => {
               value={formData.phone} 
               onChange={handleChange} 
               required 
+            />
+          </div>
+          <div className="form-group">
+            <label className="form-label">Tax ID</label>
+            <input 
+              type="text" 
+              name="tax_id" 
+              className="form-input"
+              placeholder="Optional"
+              value={formData.tax_id} 
+              onChange={handleChange} 
+            />
+          </div>
+          <div className="form-group">
+            <label className="form-label">Default Delivery Address</label>
+            <input 
+              type="text" 
+              name="home_address" 
+              className="form-input"
+              placeholder="Optional"
+              value={formData.home_address} 
+              onChange={handleChange} 
             />
           </div>
           <div className="form-group">
