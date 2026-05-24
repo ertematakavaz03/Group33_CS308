@@ -2,6 +2,8 @@ const request = require('supertest');
 const express = require('express');
 const adminRoutes = require('../routes/admin');
 const mockDb = require('./mockDb');
+jest.mock('bcrypt');
+const bcrypt = require('bcrypt');
 
 const app = express();
 app.use(express.json());
@@ -14,6 +16,14 @@ let pmHeader;   // product_manager session
 let smHeader;   // sales_manager session
 
 beforeAll(async () => {
+    // Mock bcrypt compare for all tests: true unless password is 'wrongpassword'
+    bcrypt.compare.mockImplementation((pass, hash) => Promise.resolve(pass !== 'wrongpassword'));
+
+    // Mock the db queries for the initial PM and SM logins
+    mockDb.query
+        .mockResolvedValueOnce({ rows: [{ username: 'product_manager', password_hash: 'hash', role: 'product_manager' }] })
+        .mockResolvedValueOnce({ rows: [{ username: 'sales_manager', password_hash: 'hash', role: 'sales_manager' }] });
+
     const pm = await request(app).post('/api/admin/login').send({
         username: 'product_manager',
         password: 'product123'
@@ -29,6 +39,7 @@ beforeAll(async () => {
 
 describe('POST /api/admin/login', () => {
     test('returns token on valid admin credentials', async () => {
+        mockDb.query.mockResolvedValueOnce({ rows: [{ username: 'product_manager', password_hash: 'hash', role: 'product_manager' }] });
         const res = await request(app).post('/api/admin/login').send({
             username: 'product_manager',
             password: 'product123'
@@ -40,6 +51,9 @@ describe('POST /api/admin/login', () => {
     });
 
     test('issues a distinct token per login (no session collision)', async () => {
+        mockDb.query
+            .mockResolvedValueOnce({ rows: [{ username: 'product_manager', password_hash: 'hash', role: 'product_manager' }] })
+            .mockResolvedValueOnce({ rows: [{ username: 'sales_manager', password_hash: 'hash', role: 'sales_manager' }] });
         const a = await request(app).post('/api/admin/login').send({
             username: 'product_manager', password: 'product123'
         });
@@ -50,6 +64,7 @@ describe('POST /api/admin/login', () => {
     });
 
     test('returns 401 on invalid admin credentials', async () => {
+        mockDb.query.mockResolvedValueOnce({ rows: [{ username: 'product_manager', password_hash: 'hash', role: 'product_manager' }] });
         const res = await request(app).post('/api/admin/login').send({
             username: 'product_manager',
             password: 'wrongpassword'
