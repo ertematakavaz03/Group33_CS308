@@ -34,8 +34,8 @@ const AdminDashboard = () => {
   const [discountForm, setDiscountForm] = useState({ price: "", discount_percentage: "", discount_start: "", discount_end: "" });
   const [dateFilter, setDateFilter] = useState({ startDate: "", endDate: "" });
 
-  const token = localStorage.getItem("adminToken");
-  const adminRole = localStorage.getItem("adminRole");
+  const token = sessionStorage.getItem("adminToken");
+  const adminRole = sessionStorage.getItem("adminRole");
   const tabs = getTabsByRole(adminRole);
   const revenueChartData = orders.map((order) => ({
     name: `#${order.id}`,
@@ -55,8 +55,8 @@ const AdminDashboard = () => {
       fetch(`http://localhost:5002/api/admin/${path}`, { headers: { Authorization: `Bearer ${token}` } })
         .then((r) => {
           if (r.status === 401) {
-            localStorage.removeItem("adminToken");
-            localStorage.removeItem("adminRole");
+            sessionStorage.removeItem("adminToken");
+            sessionStorage.removeItem("adminRole");
             navigate("/admin");
             return null;
           }
@@ -149,8 +149,8 @@ const AdminDashboard = () => {
         headers: { Authorization: `Bearer ${token}` }
       });
     } catch { /* ignore — clear local state regardless */ }
-    localStorage.removeItem("adminToken");
-    localStorage.removeItem("adminRole");
+    sessionStorage.removeItem("adminToken");
+    sessionStorage.removeItem("adminRole");
     navigate("/admin");
   };
 
