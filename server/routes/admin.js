@@ -1,5 +1,6 @@
 const express = require('express');
 const crypto = require('crypto');
+const bcrypt = require('bcrypt');
 const router = express.Router();
 const sendDiscountEmail = require('../utils/sendDiscountEmail');
 const rateLimit = require('../utils/rateLimiter');
@@ -47,18 +48,6 @@ const notifyWishlistUsers = async (db, product) => {
   }
 };
 
-const ADMINS = [
-  {
-    username: "product_manager",
-    password: "product123",
-    role: "product_manager"
-  },
-  {
-    username: "sales_manager",
-    password: "sales123",
-    role: "sales_manager"
-  }
-];
 
 // Each successful login gets its own unique token. Keying sessions by a
 // single shared token let one role's login overwrite another's — a
@@ -88,28 +77,36 @@ const requireRole = (...allowedRoles) => {
 };
 
 // Login
-router.post('/login', adminLoginLimiter, (req, res) => {
+router.post('/login', adminLoginLimiter, async (req, res) => {
   const { username, password } = req.body;
 
-  const admin = ADMINS.find(
-    (a) => a.username === username && a.password === password
-  );
+  try {
+    const { rows } = await req.db.query('SELECT * FROM admins WHERE username = $1', [username]);
+    if (rows.length === 0) {
+      return res.status(401).json({ error: "Invalid credentials" });
+    }
 
-  if (!admin) {
-    return res.status(401).json({ error: "Invalid credentials" });
+    const admin = rows[0];
+    const match = await bcrypt.compare(password, admin.password_hash);
+    if (!match) {
+      return res.status(401).json({ error: "Invalid credentials" });
+    }
+
+    // Issue a fresh, unique session token so concurrent admin roles never collide.
+    const token = crypto.randomBytes(32).toString('hex');
+    adminSessions[token] = {
+      username: admin.username,
+      role: admin.role
+    };
+
+    res.json({
+      token,
+      role: admin.role
+    });
+  } catch (err) {
+    console.error('Login error:', err);
+    res.status(500).json({ error: 'Internal server error' });
   }
-
-  // Issue a fresh, unique session token so concurrent admin roles never collide.
-  const token = crypto.randomBytes(32).toString('hex');
-  adminSessions[token] = {
-    username: admin.username,
-    role: admin.role
-  };
-
-  res.json({
-    token,
-    role: admin.role
-  });
 });
 
 // Logout — invalidate the current session token

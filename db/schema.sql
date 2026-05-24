@@ -129,3 +129,16 @@ CREATE TABLE IF NOT EXISTS categories (
 );
 
 ALTER TABLE products ADD CONSTRAINT fk_category FOREIGN KEY (category) REFERENCES categories(name) ON UPDATE CASCADE ON DELETE SET NULL;
+
+CREATE TABLE IF NOT EXISTS admins (
+    id SERIAL PRIMARY KEY,
+    username VARCHAR(255) UNIQUE NOT NULL,
+    password_hash VARCHAR(255) NOT NULL,
+    role VARCHAR(50) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+INSERT INTO admins (username, password_hash, role) VALUES 
+('product_manager', '$2b$10$OX4UOFfG8EiH3dmiOH7DM.Eo31UOun40whrYL/XWR2GCjRrwKb5sO', 'product_manager'),
+('sales_manager', '$2b$10$4KjM2HHrJrtd2lmxiffxsu7t.XsG0SCHEcznaOYF5RUAs/8Cdr.Jm', 'sales_manager')
+ON CONFLICT (username) DO NOTHING;
