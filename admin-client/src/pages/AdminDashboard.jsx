@@ -4,7 +4,7 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recha
 
 const getTabsByRole = (role) => {
   if (role === "product_manager") {
-    return ["Products", "Deliveries", "Reviews"];
+    return ["Products", "Categories", "Deliveries", "Reviews"];
   }
 
   if (role === "sales_manager") {
@@ -26,6 +26,10 @@ const AdminDashboard = () => {
   const [showAddForm, setShowAddForm] = useState(false);
   const [editProduct, setEditProduct] = useState(null);
   const [form, setForm] = useState({ name: "", model: "", serial_no: "", description: "", stock: "", price: "", warranty: "", distributor: "", category: "", image_url: "" });
+  const [categories, setCategories] = useState([]);
+  const [showAddCategoryForm, setShowAddCategoryForm] = useState(false);
+  const [editCategory, setEditCategory] = useState(null);
+  const [categoryForm, setCategoryForm] = useState({ name: "", description: "" });
   const [discountProduct, setDiscountProduct] = useState(null);
   const [discountForm, setDiscountForm] = useState({ price: "", discount_percentage: "", discount_start: "", discount_end: "" });
   const [dateFilter, setDateFilter] = useState({ startDate: "", endDate: "" });
@@ -68,6 +72,7 @@ const AdminDashboard = () => {
     const orderPath = `orders${orderParams.toString() ? `?${orderParams.toString()}` : ""}`;
 
     authedGet("products", setProducts);
+    authedGet("categories", setCategories);
     authedGet(orderPath, setOrders, adminRole === "sales_manager");
     authedGet("returns", setReturns, adminRole === "sales_manager");
     authedGet("deliveries", setDeliveries, adminRole === "product_manager");
@@ -184,6 +189,37 @@ const AdminDashboard = () => {
   };
 
   const openEdit = (p) => { setEditProduct(p); setForm({ name: p.name, model: p.model || "", serial_no: p.serial_no || "", description: p.description || "", stock: p.stock, price: p.price, warranty: p.warranty || "", distributor: p.distributor || "", category: p.category || "", image_url: p.image_url || "" }); setShowAddForm(true); };
+
+  const resetCategoryForm = () => setCategoryForm({ name: "", description: "" });
+
+  const handleSubmitCategory = async (e) => {
+    e.preventDefault();
+    const url = editCategory ? `http://localhost:5002/api/admin/categories/${editCategory.id}` : "http://localhost:5002/api/admin/categories";
+    const method = editCategory ? "PUT" : "POST";
+    try {
+      const res = await fetch(url, {
+        method,
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify(categoryForm),
+      });
+      if (res.ok) {
+        fetchAll(); setShowAddCategoryForm(false); setEditCategory(null); resetCategoryForm();
+      } else {
+        const data = await res.json().catch(() => ({}));
+        alert(data.error || "Failed to save category. Please try again.");
+      }
+    } catch {
+      alert("Network error. Please try again.");
+    }
+  };
+
+  const handleDeleteCategory = async (id) => {
+    if (!window.confirm("Delete this category? Products in this category will have their category removed.")) return;
+    await fetch(`http://localhost:5002/api/admin/categories/${id}`, { method: "DELETE", headers: { Authorization: `Bearer ${token}` } });
+    fetchAll();
+  };
+
+  const openEditCategory = (c) => { setEditCategory(c); setCategoryForm({ name: c.name, description: c.description || "" }); setShowAddCategoryForm(true); };
 
   const handleUpdateOrderStatus = async (orderId, newStatus) => {
     try {
@@ -391,7 +427,16 @@ const AdminDashboard = () => {
                     {[["name", "Name"], ["model", "Model"], ["serial_no", "Serial No"], ["category", "Category"], ["price", "Price"], ["stock", "Stock"], ["warranty", "Warranty"], ["distributor", "Distributor"]].map(([key, label]) => (
                       <div key={key}>
                         <label style={{ fontSize: "0.8rem", fontWeight: "700", color: "#6b7280", display: "block", marginBottom: "4px" }}>{label}</label>
-                        <input value={form[key]} onChange={e => setForm({ ...form, [key]: e.target.value })} style={fInputStyle} />
+                        {key === 'category' ? (
+                          <select value={form[key]} onChange={e => setForm({ ...form, [key]: e.target.value })} style={{ padding: "0.6rem", borderRadius: "8px", border: "1px solid #d1d5db", width: "100%", boxSizing: "border-box", cursor: "pointer" }} required>
+                            <option value="">Select Category</option>
+                            {categories.map(c => (
+                              <option key={c.id} value={c.name}>{c.name}</option>
+                            ))}
+                          </select>
+                        ) : (
+                          <input value={form[key]} onChange={e => setForm({ ...form, [key]: e.target.value })} style={{ padding: "0.6rem", borderRadius: "8px", border: "1px solid #d1d5db", width: "100%", boxSizing: "border-box" }} required={['name', 'serial_no', 'price', 'stock'].includes(key)} />
+                        )}
                       </div>
                     ))}
                   </div>
@@ -468,6 +513,72 @@ const AdminDashboard = () => {
                   ))}
                 </tbody>
               </table>
+            </div>
+          </>
+        )}
+
+        {/* CATEGORIES TAB */}
+        {activeTab === "Categories" && (
+          <>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem" }}>
+              <h2 style={{ margin: 0, fontWeight: "800" }}>Categories ({categories.length})</h2>
+              {adminRole === "product_manager" && (
+                <button onClick={() => { resetCategoryForm(); setEditCategory(null); setShowAddCategoryForm(true); }} style={{ background: "#b91c1c", color: "#fff", border: "none", padding: "0.6rem 1.2rem", borderRadius: "8px", cursor: "pointer", fontWeight: "700" }}>+ Add Category</button>
+              )}
+            </div>
+
+            {/* Add/Edit Category Form */}
+            {showAddCategoryForm && (
+              <div style={{ background: "#f9fafb", borderRadius: "12px", padding: "1.5rem", marginBottom: "2rem", border: "1px solid #e5e7eb" }}>
+                <h3 style={{ marginTop: 0 }}>{editCategory ? "Edit Category" : "New Category"}</h3>
+                <form onSubmit={handleSubmitCategory}>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: "1rem" }}>
+                    <div>
+                      <label style={{ fontSize: "0.8rem", fontWeight: "700", color: "#6b7280", display: "block", marginBottom: "4px" }}>Name</label>
+                      <input value={categoryForm.name} onChange={e => setCategoryForm({ ...categoryForm, name: e.target.value })} style={{ padding: "0.6rem", borderRadius: "8px", border: "1px solid #d1d5db", width: "100%", boxSizing: "border-box" }} required />
+                    </div>
+                    <div>
+                      <label style={{ fontSize: "0.8rem", fontWeight: "700", color: "#6b7280", display: "block", marginBottom: "4px" }}>Description</label>
+                      <textarea value={categoryForm.description} onChange={e => setCategoryForm({ ...categoryForm, description: e.target.value })} rows={3} style={{ padding: "0.6rem", borderRadius: "8px", border: "1px solid #d1d5db", width: "100%", boxSizing: "border-box", resize: "vertical" }} />
+                    </div>
+                  </div>
+                  <div style={{ display: "flex", gap: "1rem", marginTop: "1rem" }}>
+                    <button type="submit" style={{ background: "#b91c1c", color: "#fff", border: "none", padding: "0.7rem 1.5rem", borderRadius: "8px", cursor: "pointer", fontWeight: "700" }}>{editCategory ? "Save Changes" : "Add Category"}</button>
+                    <button type="button" onClick={() => { setShowAddCategoryForm(false); setEditCategory(null); resetCategoryForm(); }} style={{ background: "#e5e7eb", color: "#111", border: "none", padding: "0.7rem 1.5rem", borderRadius: "8px", cursor: "pointer", fontWeight: "700" }}>Cancel</button>
+                  </div>
+                </form>
+              </div>
+            )}
+
+            {/* Category Table */}
+            <div style={{ overflowX: "auto" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.9rem" }}>
+                <thead>
+                  <tr style={{ borderBottom: "2px solid #f3f4f6" }}>
+                    {["ID", "Name", "Description", "Actions"].map(h => (
+                      <th key={h} style={{ textAlign: "left", padding: "0.7rem 1rem", color: "#6b7280", fontWeight: "700", fontSize: "0.8rem", textTransform: "uppercase" }}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {categories.map(c => (
+                    <tr key={c.id} style={{ borderBottom: "1px solid #f3f4f6" }}>
+                      <td style={{ padding: "0.7rem 1rem", color: "#6b7280" }}>#{c.id}</td>
+                      <td style={{ padding: "0.7rem 1rem", fontWeight: "600" }}>{c.name}</td>
+                      <td style={{ padding: "0.7rem 1rem", color: "#374151" }}>{c.description || "—"}</td>
+                      <td style={{ padding: "0.7rem 1rem", whiteSpace: "nowrap" }}>
+                        {adminRole === "product_manager" && (
+                          <>
+                            <button onClick={() => openEditCategory(c)} style={{ background: "#f3f4f6", border: "none", padding: "0.4rem 0.9rem", borderRadius: "6px", cursor: "pointer", fontWeight: "700", marginRight: "0.4rem" }}>Edit</button>
+                            <button onClick={() => handleDeleteCategory(c.id)} style={{ background: "#fee2e2", color: "#dc2626", border: "none", padding: "0.4rem 0.9rem", borderRadius: "6px", cursor: "pointer", fontWeight: "700" }}>Delete</button>
+                          </>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              {categories.length === 0 && <p style={{ color: "#6b7280", textAlign: "center", padding: "2rem" }}>No categories yet.</p>}
             </div>
           </>
         )}

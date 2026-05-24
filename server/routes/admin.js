@@ -144,6 +144,54 @@ router.get('/products', auth, async (req, res) => {
   } catch (err) { console.error('Admin route error:', err); res.status(500).json({ error: 'Internal server error' }); }
 });
 
+// Categories CRUD
+router.get('/categories', auth, async (req, res) => {
+  try {
+    const result = await req.db.query('SELECT * FROM categories ORDER BY name ASC');
+    res.json(result.rows);
+  } catch (err) { console.error('Admin route error:', err); res.status(500).json({ error: 'Internal server error' }); }
+});
+
+router.post('/categories', auth, requireRole("product_manager"), async (req, res) => {
+  const { name, description } = req.body;
+  if (!name) return res.status(400).json({ error: 'Category name is required' });
+  try {
+    const result = await req.db.query(
+      'INSERT INTO categories (name, description) VALUES ($1, $2) RETURNING *',
+      [name, description || null]
+    );
+    res.json(result.rows[0]);
+  } catch (err) { 
+    if (err.code === '23505') return res.status(400).json({ error: 'Category already exists' });
+    console.error('Admin route error:', err); 
+    res.status(500).json({ error: 'Internal server error' }); 
+  }
+});
+
+router.put('/categories/:id', auth, requireRole("product_manager"), async (req, res) => {
+  const { name, description } = req.body;
+  if (!name) return res.status(400).json({ error: 'Category name is required' });
+  try {
+    const result = await req.db.query(
+      'UPDATE categories SET name=$1, description=$2 WHERE id=$3 RETURNING *',
+      [name, description || null, req.params.id]
+    );
+    if (result.rows.length === 0) return res.status(404).json({ error: 'Category not found' });
+    res.json(result.rows[0]);
+  } catch (err) { 
+    if (err.code === '23505') return res.status(400).json({ error: 'Category already exists' });
+    console.error('Admin route error:', err); 
+    res.status(500).json({ error: 'Internal server error' }); 
+  }
+});
+
+router.delete('/categories/:id', auth, requireRole("product_manager"), async (req, res) => {
+  try {
+    await req.db.query('DELETE FROM categories WHERE id=$1', [req.params.id]);
+    res.json({ message: 'Deleted' });
+  } catch (err) { console.error('Admin route error:', err); res.status(500).json({ error: 'Internal server error' }); }
+});
+
 // Products CRUD
 router.post('/products', auth, requireRole("product_manager"), async (req, res) => {
   const { name, model, serial_no, description, stock, price, warranty, distributor, category, image_url } = req.body;
