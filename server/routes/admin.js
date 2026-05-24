@@ -4,6 +4,8 @@ const bcrypt = require('bcrypt');
 const router = express.Router();
 const sendDiscountEmail = require('../utils/sendDiscountEmail');
 const rateLimit = require('../utils/rateLimiter');
+const adminSessions = require('../utils/adminSessions');
+const generateInvoicePDF = require('../utils/generateInvoicePDF');
 
 // Brute-force protection on the admin login endpoint.
 const adminLoginLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 10, message: 'Too many login attempts. Please try again later.' });
@@ -49,10 +51,6 @@ const notifyWishlistUsers = async (db, product) => {
 };
 
 
-// Each successful login gets its own unique token. Keying sessions by a
-// single shared token let one role's login overwrite another's — a
-// product_manager and a sales_manager would collide. Unique tokens fix that.
-const adminSessions = {};
 
 // Auth middleware
 const auth = (req, res, next) => {
@@ -114,6 +112,67 @@ router.post('/logout', auth, (req, res) => {
   const token = req.headers.authorization?.split(" ")[1];
   delete adminSessions[token];
   res.json({ message: 'Logged out' });
+});
+
+// Admin invoice download
+router.get('/orders/:id/invoice', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { adminToken } = req.query;
+
+    if (!adminToken || !adminSessions[adminToken]) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    const orderResult = await req.db.query(
+      `SELECT o.*, u.name AS user_name, u.email AS user_email,
+              a_ship.title AS ship_title, a_ship.full_address AS ship_full_address,
+              a_ship.city AS ship_city, a_ship.district AS ship_district,
+              a_ship.postal_code AS ship_postal_code
+       FROM orders o
+       LEFT JOIN users u ON o.user_id = u.id
+       LEFT JOIN addresses a_ship ON o.shipping_address_id = a_ship.id
+       WHERE o.id = $1`,
+      [id]
+    );
+
+    if (orderResult.rows.length === 0) return res.status(404).json({ error: 'Order not found' });
+    const order = orderResult.rows[0];
+
+    const itemsResult = await req.db.query(
+      `SELECT oi.quantity, oi.price_at_purchase AS price, p.name
+       FROM order_items oi
+       LEFT JOIN products p ON oi.product_id = p.id
+       WHERE oi.order_id = $1`,
+      [id]
+    );
+
+    const pdfBuffer = await generateInvoicePDF({
+      orderId: order.id,
+      customerName: order.user_name,
+      customerEmail: order.user_email,
+      date: new Date(order.created_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' }),
+      items: itemsResult.rows,
+      totalAmount: order.total_amount,
+      shippingAddress: order.ship_full_address ? {
+        title: order.ship_title,
+        full_address: order.ship_full_address,
+        city: order.ship_city,
+        district: order.ship_district,
+        postal_code: order.ship_postal_code
+      } : null
+    });
+
+    res.set({
+      'Content-Type': 'application/pdf',
+      'Content-Disposition': `attachment; filename="invoice-order-${id}.pdf"`,
+      'Content-Length': pdfBuffer.length
+    });
+    res.send(pdfBuffer);
+  } catch (err) {
+    console.error('Admin Invoice error:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
 });
 
 // Products list (admin) — includes discount info + computed effective price

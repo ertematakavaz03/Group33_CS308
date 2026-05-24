@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const sendOrderEmail = require('../utils/sendOrderEmail');
 const generateInvoicePDF = require('../utils/generateInvoicePDF');
+const adminSessions = require('../utils/adminSessions');
 
 // customer checkout
 router.post('/checkout', async (req, res) => {
@@ -164,6 +165,7 @@ router.get('/my-orders/:userId', async (req, res) => {
 router.get('/:id/invoice', async (req, res) => {
   try {
     const { id } = req.params;
+    const { userId } = req.query;
 
     const orderResult = await req.db.query(
       `SELECT o.*, u.name AS user_name, u.email AS user_email,
@@ -182,6 +184,12 @@ router.get('/:id/invoice', async (req, res) => {
     }
 
     const order = orderResult.rows[0];
+
+    // Authorization: User must be the owner of the order
+    const isOwner = userId && Number(userId) === Number(order.user_id);
+    if (!isOwner) {
+      return res.status(403).json({ error: 'Not authorized to download this invoice' });
+    }
     const itemsResult = await req.db.query(
       `SELECT oi.quantity, oi.price_at_purchase AS price, p.name
        FROM order_items oi

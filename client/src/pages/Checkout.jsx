@@ -411,7 +411,7 @@ const Checkout = () => {
             <div className="no-print" style={{ display: "flex", gap: "1rem" }}>
               <button
                 onClick={async () => {
-                  const res = await fetch(`http://localhost:5001/api/orders/${invoiceData.orderId}/invoice`);
+                  const res = await fetch(`http://localhost:5001/api/orders/${invoiceData.orderId}/invoice?userId=${currentUser?.id}`);
                   const blob = await res.blob();
                   const url = URL.createObjectURL(blob);
                   const a = document.createElement("a");

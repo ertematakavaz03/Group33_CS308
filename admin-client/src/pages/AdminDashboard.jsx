@@ -662,7 +662,7 @@ const AdminDashboard = () => {
                       <td style={{ padding: "0.7rem 1rem", color: "#6b7280" }}>{o.created_at ? new Date(o.created_at).toLocaleDateString() : "-"}</td>
                       <td style={{ padding: "0.7rem 1rem" }}>
                         <button
-                          onClick={() => window.open(`http://localhost:5001/api/orders/${o.id}/invoice`, "_blank", "noopener,noreferrer")}
+                          onClick={() => window.open(`http://localhost:5002/api/admin/orders/${o.id}/invoice?adminToken=${sessionStorage.getItem('adminToken')}`, "_blank", "noopener,noreferrer")}
                           style={{ background: "#f3f4f6", color: "#374151", border: "none", padding: "0.4rem 0.8rem", borderRadius: "6px", cursor: "pointer", fontWeight: "700" }}
                         >
                           PDF

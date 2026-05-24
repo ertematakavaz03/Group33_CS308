@@ -20,7 +20,8 @@
     "nodemailer": "^8.0.5",
     "pdfkit": "^0.18.0",
     "pg": "^8.11.3",
-    "resend": "^6.12.3"
+    "resend": "^6.12.3",
+    "roboto-fontface": "^0.10.0"
   },
   "devDependencies": {
     "concurrently": "^8.2.2",
