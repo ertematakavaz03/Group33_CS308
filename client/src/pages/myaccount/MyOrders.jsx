@@ -123,14 +123,6 @@ const MyOrders = () => {
     </div>
   );
 
-  if (orders.length === 0) return (
-    <div style={{ background: "#fff", borderRadius: "20px", padding: "4rem 2rem", boxShadow: "0 4px 24px rgba(0,0,0,0.06)", textAlign: "center" }}>
-      <h2 style={{ color: "#111827", fontWeight: "800", margin: "0 0 0.5rem" }}>No orders yet</h2>
-      <p style={{ color: "#6B7280", marginBottom: "2rem" }}>Start shopping to place your first order!</p>
-      <button onClick={() => navigate("/")} style={s.primaryBtn}>Start Shopping</button>
-    </div>
-  );
-
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
@@ -140,6 +132,15 @@ const MyOrders = () => {
           <p style={pageHeader.sub}>Track and manage your order history</p>
         </div>
       </div>
+
+      {orders.length === 0 ? (
+        <div style={{ background: "#fff", borderRadius: "20px", padding: "4rem 2rem", boxShadow: "0 4px 24px rgba(0,0,0,0.06)", textAlign: "center" }}>
+          <h2 style={{ color: "#111827", fontWeight: "800", margin: "0 0 0.5rem" }}>No orders yet</h2>
+          <p style={{ color: "#6B7280", marginBottom: "2rem" }}>Start shopping to place your first order!</p>
+          <button onClick={() => navigate("/")} style={s.primaryBtn}>Start Shopping</button>
+        </div>
+      ) : null}
+
       {orders.map((order) => {
         const cfg      = getStatus(order.status);
         const isOpen   = expanded === order.id;

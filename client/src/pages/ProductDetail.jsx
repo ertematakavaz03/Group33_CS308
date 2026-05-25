@@ -229,7 +229,7 @@ const ProductDetail = () => {
               </button>
 
               {showUserDropdown && (
-                <div style={{ position: 'absolute', top: 'calc(100% + 8px)', right: 0, background: '#fff', borderRadius: '14px', boxShadow: '0 8px 32px rgba(0,0,0,0.15)', minWidth: '220px', zIndex: 1000, border: '1px solid rgba(0,0,0,0.07)', overflow: 'hidden' }}>
+                <div style={{ position: 'absolute', top: 'calc(100% + 8px)', right: 0, background: '#fff', borderRadius: '14px', boxShadow: '0 8px 32px rgba(0,0,0,0.15)', minWidth: '210px', zIndex: 1000, border: '1px solid rgba(0,0,0,0.07)', overflow: 'hidden' }}>
                   <div style={{ position: 'absolute', top: '-7px', right: '22px', width: 0, height: 0, borderLeft: '7px solid transparent', borderRight: '7px solid transparent', borderBottom: '7px solid #fff', filter: 'drop-shadow(0 -2px 2px rgba(0,0,0,0.07))' }} />
                   <div style={{ padding: '1rem 1.2rem 0.75rem', borderBottom: '1px solid #f3f4f6', background: '#fafafa' }}>
                     <div style={{ fontWeight: '700', fontSize: '0.95rem', color: '#111' }}>{user?.user?.name || 'User'}</div>
@@ -244,7 +244,7 @@ const ProductDetail = () => {
                       { to: '/myaccount/wishlist', label: 'My Wishlist', icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" /></svg> },
                     ].map(({ to, label, icon }) => (
                       <Link key={to} to={to} onClick={() => setShowUserDropdown(false)}
-                        style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '0.7rem 1rem', color: '#374151', fontWeight: '600', fontSize: '0.875rem', textDecoration: 'none', borderRadius: '8px', transition: 'background 0.12s' }}
+                        style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '0.7rem 1rem', color: '#374151', fontWeight: '600', fontSize: '0.875rem', textDecoration: 'none', borderRadius: '8px', transition: 'background 0.12s', whiteSpace: 'nowrap' }}
                         onMouseEnter={e => e.currentTarget.style.background = '#f9fafb'}
                         onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                       >

@@ -672,15 +672,6 @@ const Dashboard = () => {
 
         {/* --- DASHBOARD CONTENT BELOW HERO --- */}
         <div className="dashboard-content">
-          {/* --- SECTION HEADER --- */}
-          {activeCategory !== "All Categories" && (
-            <div className="section-header" style={{ textAlign: 'center', marginBottom: '2.5rem' }}>
-              <h2 className="section-title" style={{ fontSize: '2.4rem', fontWeight: '800', color: '#1a1a1a', marginBottom: '0.8rem' }}>
-                {activeCategory}
-              </h2>
-            </div>
-          )}
-
           {/* Search Bar */}
           <div className="search-container">
             <svg fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" width="24" height="24" style={{ color: 'var(--text-muted)' }}><path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
@@ -715,12 +706,19 @@ const Dashboard = () => {
           </div>
 
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', marginTop: '1rem' }}>
-            <h2 className="section-title" style={{ margin: 0, fontSize: '1.4rem' }}>
-              {activeCategory === "All Categories" ? "Featured Items" : activeCategory}
-              <span style={{ fontSize: '0.9rem', color: 'var(--text-muted)', marginLeft: '1rem', fontWeight: '500' }}>
-                ({sortedProducts.length} results)
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+              <h2 className="section-title" style={{ margin: 0, fontSize: '1.6rem', fontWeight: '800', color: '#111827', letterSpacing: '-0.02em' }}>
+                {activeCategory === "All Categories" ? "Featured Items" : activeCategory}
+              </h2>
+              <span style={{
+                background: activeCategory === "Top Sellers" ? 'linear-gradient(135deg, #d4af37, #f0d060)' : 'var(--pazaryolu-red)',
+                color: '#fff',
+                padding: '3px 10px', borderRadius: '999px',
+                fontSize: '0.8rem', fontWeight: '700',
+              }}>
+                {sortedProducts.length} results
               </span>
-            </h2>
+            </div>
             <select
               value={sortOption}
               onChange={(e) => setSortOption(e.target.value)}
