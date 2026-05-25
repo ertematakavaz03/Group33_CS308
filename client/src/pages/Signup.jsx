@@ -13,21 +13,37 @@ const Signup = () => {
   });
   const [error, setError] = useState('');
 
+  const formatPhone = (value) => {
+    let digits = value.replace(/\D/g, '');
+    if (digits.startsWith('0')) digits = digits.slice(1);
+    if (digits.length > 10) digits = digits.slice(0, 10);
+    if (digits.length === 0) return '';
+    if (digits.length <= 3) return `0 (${digits}`;
+    if (digits.length <= 6) return `0 (${digits.slice(0, 3)}) ${digits.slice(3)}`;
+    if (digits.length <= 8) return `0 (${digits.slice(0, 3)}) ${digits.slice(3, 6)} ${digits.slice(6)}`;
+    return `0 (${digits.slice(0, 3)}) ${digits.slice(3, 6)} ${digits.slice(6, 8)} ${digits.slice(8)}`;
+  };
+
   const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+    if (e.target.name === 'phone') {
+      setFormData({ ...formData, phone: formatPhone(e.target.value) });
+    } else {
+      setFormData({ ...formData, [e.target.name]: e.target.value });
+    }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     if (!formData.name || !formData.email || !formData.phone || !formData.password) {
       setError('Please fill in all fields.');
       return;
     }
 
-    const digitsOnly = formData.phone.replace(/\D/g, '');
+    const rawDigits = formData.phone.replace(/\D/g, '');
+    const digitsOnly = rawDigits.startsWith('0') ? rawDigits.slice(1) : rawDigits;
     if (digitsOnly.length !== 10) {
-      setError('Invalid: Phone number must be exactly 10 digits.');
+      setError('Please enter a valid 10-digit phone number.');
       return;
     }
 
@@ -111,7 +127,7 @@ const Signup = () => {
         <h2 className="auth-title">PazarYolu</h2>
         <p className="auth-subtitle">Join us today! Create your account below.</p>
         
-        <form onSubmit={handleSubmit} noValidate>
+        <form onSubmit={handleSubmit} noValidate autoComplete="off">
           {error && (
             <div style={{ 
               backgroundColor: 'rgba(165, 28, 28, 0.1)', 
@@ -128,72 +144,81 @@ const Signup = () => {
           )}
           <div className="form-group">
             <label className="form-label">Full Name</label>
-            <input 
-              type="text" 
-              name="name" 
+            <input
+              type="text"
+              name="name"
               className="form-input"
               placeholder="John Doe"
-              value={formData.name} 
-              onChange={handleChange} 
-              required 
+              value={formData.name}
+              onChange={handleChange}
+              maxLength={255}
+              required
             />
           </div>
           <div className="form-group">
             <label className="form-label">Email Address</label>
-            <input 
-              type="email" 
-              name="email" 
+            <input
+              type="email"
+              name="email"
               className="form-input"
               placeholder="name@example.com"
-              value={formData.email} 
-              onChange={handleChange} 
-              required 
+              value={formData.email}
+              onChange={handleChange}
+              maxLength={255}
+              autoComplete="off"
+              required
             />
           </div>
           <div className="form-group">
             <label className="form-label">Phone Number</label>
-            <input 
-              type="tel" 
-              name="phone" 
+            <input
+              type="tel"
+              name="phone"
               className="form-input"
-              placeholder="(555) 555 55 55"
-              value={formData.phone} 
-              onChange={handleChange} 
-              required 
+              placeholder="0 (5XX) XXX XX XX"
+              value={formData.phone}
+              onChange={handleChange}
+              maxLength={17}
+              required
             />
           </div>
           <div className="form-group">
             <label className="form-label">Tax ID</label>
-            <input 
-              type="text" 
-              name="tax_id" 
+            <input
+              type="text"
+              name="tax_id"
               className="form-input"
-              placeholder="Optional"
-              value={formData.tax_id} 
-              onChange={handleChange} 
+              placeholder="Optional (10-11 digits)"
+              value={formData.tax_id}
+              onChange={(e) => setFormData({ ...formData, tax_id: e.target.value.replace(/\D/g, '').slice(0, 11) })}
+              maxLength={11}
+              inputMode="numeric"
             />
           </div>
           <div className="form-group">
             <label className="form-label">Default Delivery Address</label>
-            <input 
-              type="text" 
-              name="home_address" 
+            <input
+              type="text"
+              name="home_address"
               className="form-input"
               placeholder="Optional"
-              value={formData.home_address} 
-              onChange={handleChange} 
+              value={formData.home_address}
+              onChange={handleChange}
+              maxLength={500}
             />
           </div>
           <div className="form-group">
             <label className="form-label">Password</label>
-            <input 
-              type="password" 
-              name="password" 
+            <input
+              type="password"
+              name="password"
               className="form-input"
-              placeholder="••••••••"
-              value={formData.password} 
-              onChange={handleChange} 
-              required 
+              placeholder="Min. 6 characters"
+              value={formData.password}
+              onChange={handleChange}
+              maxLength={128}
+              autoComplete="new-password"
+              required
             />
           </div>
           <button type="submit" className="auth-button">Create Account</button>

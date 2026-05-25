@@ -7,19 +7,19 @@ const AddressForm = ({ form, onChange, onSave, onCancel, saveLabel }) => (
     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem" }}>
       <div style={{ gridColumn: "span 2" }}>
         <label style={s.label}>Address Title *</label>
-        <input name="title" placeholder="e.g. Home, Work" value={form.title} onChange={onChange} style={s.input} />
+        <input name="title" placeholder="e.g. Home, Work" value={form.title} onChange={onChange} style={s.input} maxLength={100} />
       </div>
       <div style={{ gridColumn: "span 2" }}>
         <label style={s.label}>Full Address *</label>
-        <input name="full_address" placeholder="Street, building no, apartment..." value={form.full_address} onChange={onChange} style={s.input} />
+        <input name="full_address" placeholder="Street, building no, apartment..." value={form.full_address} onChange={onChange} style={s.input} maxLength={500} />
       </div>
       <div>
         <label style={s.label}>City</label>
-        <input name="city" placeholder="Istanbul" value={form.city} onChange={onChange} style={s.input} />
+        <input name="city" placeholder="Istanbul" value={form.city} onChange={onChange} style={s.input} maxLength={100} />
       </div>
       <div>
         <label style={s.label}>District</label>
-        <input name="district" placeholder="Kadıköy" value={form.district} onChange={onChange} style={s.input} />
+        <input name="district" placeholder="Kadıköy" value={form.district} onChange={onChange} style={s.input} maxLength={100} />
       </div>
       <div>
         <label style={s.label}>Postal Code</label>
@@ -29,7 +29,7 @@ const AddressForm = ({ form, onChange, onSave, onCancel, saveLabel }) => (
           value={form.postal_code}
           onChange={e => { if (/^\d*$/.test(e.target.value)) onChange(e); }}
           inputMode="numeric"
-          maxLength={10}
+          maxLength={5}
           style={s.input}
         />
       </div>

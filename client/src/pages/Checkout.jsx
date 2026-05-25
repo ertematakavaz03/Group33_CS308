@@ -467,12 +467,12 @@ const Checkout = () => {
         {isAddingAddress ? (
           <div style={{ background: "#fff", padding: "1.5rem", borderRadius: "8px", border: "1px solid #e5e7eb", marginBottom: "1rem" }}>
             <h3 style={{ marginTop: 0, fontSize: "1.1rem" }}>New Address</h3>
-            <input name="title" placeholder="Address Title (e.g. Home, Work)" value={newAddressForm.title} onChange={handleNewAddressChange} style={inputStyle} />
-            <input name="full_address" placeholder="Full Address" value={newAddressForm.full_address} onChange={handleNewAddressChange} style={inputStyle} />
+            <input name="title" placeholder="Address Title (e.g. Home, Work)" value={newAddressForm.title} onChange={handleNewAddressChange} style={inputStyle} maxLength={100} />
+            <input name="full_address" placeholder="Full Address" value={newAddressForm.full_address} onChange={handleNewAddressChange} style={inputStyle} maxLength={500} />
             <div style={{ display: "flex", gap: "10px" }}>
-              <input name="city" placeholder="City" value={newAddressForm.city} onChange={handleNewAddressChange} style={inputStyle} />
-              <input name="district" placeholder="District" value={newAddressForm.district} onChange={handleNewAddressChange} style={inputStyle} />
-              <input name="postal_code" placeholder="Postal Code" value={newAddressForm.postal_code} onChange={handleNewAddressChange} style={inputStyle} />
+              <input name="city" placeholder="City" value={newAddressForm.city} onChange={handleNewAddressChange} style={inputStyle} maxLength={100} />
+              <input name="district" placeholder="District" value={newAddressForm.district} onChange={handleNewAddressChange} style={inputStyle} maxLength={100} />
+              <input name="postal_code" placeholder="Postal Code" value={newAddressForm.postal_code} onChange={handleNewAddressChange} style={inputStyle} maxLength={5} inputMode="numeric" />
             </div>
             <button type="button" onClick={handleSaveNewAddress} style={{ padding: "0.8rem 1.5rem", background: "#111", color: "#fff", border: "none", borderRadius: "8px", fontWeight: "bold", cursor: "pointer" }}>Save Address</button>
           </div>
@@ -545,10 +545,10 @@ const Checkout = () => {
         {/* New card form — only when "new" is selected */}
         {selectedCardId === "new" && (
           <>
-            <input name="name" placeholder="Name on Card" value={form.name} onChange={handleChange} style={inputStyle} />
+            <input name="name" placeholder="Name on Card" value={form.name} onChange={handleChange} style={inputStyle} maxLength={255} />
 
             <div style={{ position: "relative", marginBottom: "1rem" }}>
-              <input name="cardNumber" placeholder="Card Number" value={form.cardNumber} onChange={handleChange} style={{ ...inputStyle, marginBottom: 0, paddingRight: "70px" }} />
+              <input name="cardNumber" placeholder="Card Number" value={form.cardNumber} onChange={handleChange} style={{ ...inputStyle, marginBottom: 0, paddingRight: "70px" }} maxLength={19} />
               {cardType === "visa" && (
                 <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/5/5c/Visa_Inc._logo_%282021%E2%80%93present%29.svg/960px-Visa_Inc._logo_%282021%E2%80%93present%29.svg.png" alt="Visa" style={cardLogoStyle} />
               )}
@@ -558,8 +558,8 @@ const Checkout = () => {
             </div>
 
             <div style={{ display: "flex", gap: "15px", marginBottom: "1rem" }}>
-              <input name="expiry" placeholder="Expiry (MM/YY)" value={form.expiry} onChange={handleChange} style={{ ...inputStyle, marginBottom: 0, flex: 1 }} />
-              <input name="cvv" placeholder="CVV" value={form.cvv} onChange={handleChange} style={{ ...inputStyle, marginBottom: 0, flex: 1 }} />
+              <input name="expiry" placeholder="Expiry (MM/YY)" value={form.expiry} onChange={handleChange} style={{ ...inputStyle, marginBottom: 0, flex: 1 }} maxLength={5} />
+              <input name="cvv" placeholder="CVV" value={form.cvv} onChange={handleChange} style={{ ...inputStyle, marginBottom: 0, flex: 1 }} maxLength={4} />
             </div>
 
             <label style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "1.5rem", fontSize: "0.9rem", color: "#374151", fontWeight: "600", cursor: "pointer" }}>

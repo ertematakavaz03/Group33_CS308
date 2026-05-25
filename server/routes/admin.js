@@ -210,11 +210,13 @@ router.get('/categories', auth, async (req, res) => {
 
 router.post('/categories', auth, requireRole("product_manager"), async (req, res) => {
   const { name, description } = req.body;
-  if (!name) return res.status(400).json({ error: 'Category name is required' });
+  const cleanName = String(name || '').trim();
+  if (!cleanName || cleanName.length > 100) return res.status(400).json({ error: 'Category name is required (max 100 characters)' });
+  if (description && String(description).length > 500) return res.status(400).json({ error: 'Description must be under 500 characters' });
   try {
     const result = await req.db.query(
       'INSERT INTO categories (name, description) VALUES ($1, $2) RETURNING *',
-      [name, description || null]
+      [cleanName, description ? String(description).trim() : null]
     );
     res.json(result.rows[0]);
   } catch (err) { 
@@ -226,11 +228,13 @@ router.post('/categories', auth, requireRole("product_manager"), async (req, res
 
 router.put('/categories/:id', auth, requireRole("product_manager"), async (req, res) => {
   const { name, description } = req.body;
-  if (!name) return res.status(400).json({ error: 'Category name is required' });
+  const cleanName = String(name || '').trim();
+  if (!cleanName || cleanName.length > 100) return res.status(400).json({ error: 'Category name is required (max 100 characters)' });
+  if (description && String(description).length > 500) return res.status(400).json({ error: 'Description must be under 500 characters' });
   try {
     const result = await req.db.query(
       'UPDATE categories SET name=$1, description=$2 WHERE id=$3 RETURNING *',
-      [name, description || null, req.params.id]
+      [cleanName, description ? String(description).trim() : null, req.params.id]
     );
     if (result.rows.length === 0) return res.status(404).json({ error: 'Category not found' });
     res.json(result.rows[0]);
@@ -248,13 +252,33 @@ router.delete('/categories/:id', auth, requireRole("product_manager"), async (re
   } catch (err) { console.error('Admin route error:', err); res.status(500).json({ error: 'Internal server error' }); }
 });
 
+function validateProductFields({ name, model, serial_no, description, stock, price, warranty, distributor, image_url }) {
+  const cleanName = String(name || '').trim();
+  if (!cleanName || cleanName.length > 255) return 'Product name is required (max 255 characters)';
+  const cleanModel = String(model || '').trim();
+  if (!cleanModel || cleanModel.length > 255) return 'Model is required (max 255 characters)';
+  const cleanSerial = String(serial_no || '').trim();
+  if (!cleanSerial || cleanSerial.length > 100) return 'Serial number is required (max 100 characters)';
+  const stockNum = parseInt(stock, 10);
+  if (!Number.isInteger(stockNum) || stockNum < 0 || stockNum > 99999) return 'Stock must be an integer between 0 and 99,999';
+  const priceNum = parseFloat(price);
+  if (!Number.isFinite(priceNum) || priceNum < 0 || priceNum > 999999) return 'Price must be a number between 0 and 999,999';
+  if (description && String(description).length > 2000) return 'Description must be under 2000 characters';
+  if (warranty && String(warranty).trim().length > 100) return 'Warranty must be under 100 characters';
+  if (distributor && String(distributor).trim().length > 255) return 'Distributor must be under 255 characters';
+  if (image_url && String(image_url).length > 1000) return 'Image URL must be under 1000 characters';
+  return null;
+}
+
 // Products CRUD
 router.post('/products', auth, requireRole("product_manager"), async (req, res) => {
   const { name, model, serial_no, description, stock, price, warranty, distributor, category, image_url } = req.body;
+  const validationError = validateProductFields({ name, model, serial_no, description, stock, price, warranty, distributor, image_url });
+  if (validationError) return res.status(400).json({ error: validationError });
   try {
     const result = await req.db.query(
       'INSERT INTO products (name, model, serial_no, description, stock, price, warranty, distributor, category, image_url, status) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING *',
-      [name, model, serial_no, description, stock, price, warranty, distributor, category, image_url, 'active']
+      [String(name).trim(), String(model).trim(), String(serial_no).trim(), description || null, parseInt(stock, 10), parseFloat(price), warranty || null, distributor || null, category, image_url || null, 'active']
     );
     res.json(result.rows[0]);
   } catch (err) { console.error('Admin route error:', err); res.status(500).json({ error: 'Internal server error' }); }
@@ -262,10 +286,12 @@ router.post('/products', auth, requireRole("product_manager"), async (req, res) 
 
 router.put('/products/:id', auth, requireRole("product_manager"), async (req, res) => {
   const { name, model, serial_no, description, stock, price, warranty, distributor, category, image_url } = req.body;
+  const validationError = validateProductFields({ name, model, serial_no, description, stock, price, warranty, distributor, image_url });
+  if (validationError) return res.status(400).json({ error: validationError });
   try {
     const result = await req.db.query(
       'UPDATE products SET name=$1, model=$2, serial_no=$3, description=$4, stock=$5, price=$6, warranty=$7, distributor=$8, category=$9, image_url=$10 WHERE id=$11 RETURNING *',
-      [name, model, serial_no, description, stock, price, warranty, distributor, category, image_url, req.params.id]
+      [String(name).trim(), String(model).trim(), String(serial_no).trim(), description || null, parseInt(stock, 10), parseFloat(price), warranty || null, distributor || null, category, image_url || null, req.params.id]
     );
     res.json(result.rows[0]);
   } catch (err) { console.error('Admin route error:', err); res.status(500).json({ error: 'Internal server error' }); }

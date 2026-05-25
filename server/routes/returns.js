@@ -8,6 +8,9 @@ router.post('/', async (req, res) => {
   if (!Number.isInteger(Number(userId)) || !Number.isInteger(Number(orderItemId))) {
     return res.status(400).json({ error: 'userId and orderItemId are required' });
   }
+  if (reason && String(reason).length > 1000) {
+    return res.status(400).json({ error: 'Return reason must be under 1000 characters' });
+  }
 
   try {
     // Fetch the order item together with its parent order

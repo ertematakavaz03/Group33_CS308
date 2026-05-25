@@ -689,7 +689,8 @@ const Dashboard = () => {
               className="search-input"
               placeholder="Search for electronics, clothing, books..."
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              onChange={(e) => setSearchTerm(e.target.value.slice(0, 100))}
+              maxLength={100}
               style={{ border: 'none', background: 'transparent', padding: '0 1rem', flex: 1, outline: 'none', fontSize: '1.1rem' }}
             />
             {searchTerm && (

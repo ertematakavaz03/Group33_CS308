@@ -30,8 +30,22 @@ router.post('/', async (req, res) => {
       postal_code
     } = req.body;
 
-    if (!user_id || !title || !full_address) {
-      return res.status(400).json({ error: 'user_id, title, and full_address are required' });
+    if (!user_id) {
+      return res.status(400).json({ error: 'user_id is required' });
+    }
+    const cleanTitle = String(title || '').trim();
+    if (!cleanTitle || cleanTitle.length > 100) {
+      return res.status(400).json({ error: 'Title is required and must be under 100 characters' });
+    }
+    const cleanFullAddress = String(full_address || '').trim();
+    if (!cleanFullAddress || cleanFullAddress.length < 5 || cleanFullAddress.length > 500) {
+      return res.status(400).json({ error: 'Address must be between 5 and 500 characters' });
+    }
+    const cleanCity = city ? String(city).trim().slice(0, 100) : null;
+    const cleanDistrict = district ? String(district).trim().slice(0, 100) : null;
+    const cleanPostal = postal_code ? String(postal_code).replace(/\D/g, '') : null;
+    if (cleanPostal && cleanPostal.length !== 5) {
+      return res.status(400).json({ error: 'Postal code must be exactly 5 digits' });
     }
 
     await req.db.query('BEGIN');
@@ -51,7 +65,7 @@ router.post('/', async (req, res) => {
       (user_id, title, full_address, city, district, postal_code, is_default)
       VALUES ($1,$2,$3,$4,$5,$6,$7)
       RETURNING *`,
-      [user_id, title, full_address, city, district, postal_code, makeDefault]
+      [user_id, cleanTitle, cleanFullAddress, cleanCity, cleanDistrict, cleanPostal, makeDefault]
     );
 
     await req.db.query('COMMIT');
@@ -68,10 +82,24 @@ router.put('/:id', async (req, res) => {
   try {
     const { id } = req.params;
     const { title, full_address, city, district, postal_code } = req.body;
+    const cleanTitle = String(title || '').trim();
+    if (!cleanTitle || cleanTitle.length > 100) {
+      return res.status(400).json({ error: 'Title is required and must be under 100 characters' });
+    }
+    const cleanFullAddress = String(full_address || '').trim();
+    if (!cleanFullAddress || cleanFullAddress.length < 5 || cleanFullAddress.length > 500) {
+      return res.status(400).json({ error: 'Address must be between 5 and 500 characters' });
+    }
+    const cleanCity = city ? String(city).trim().slice(0, 100) : null;
+    const cleanDistrict = district ? String(district).trim().slice(0, 100) : null;
+    const cleanPostal = postal_code ? String(postal_code).replace(/\D/g, '') : null;
+    if (cleanPostal && cleanPostal.length !== 5) {
+      return res.status(400).json({ error: 'Postal code must be exactly 5 digits' });
+    }
     const result = await req.db.query(
       `UPDATE addresses SET title=$1, full_address=$2, city=$3, district=$4, postal_code=$5
        WHERE id=$6 RETURNING *`,
-      [title, full_address, city, district, postal_code, id]
+      [cleanTitle, cleanFullAddress, cleanCity, cleanDistrict, cleanPostal, id]
     );
     if (result.rows.length === 0) return res.status(404).json({ error: 'Address not found' });
     res.json(result.rows[0]);

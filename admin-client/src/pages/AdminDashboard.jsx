@@ -435,19 +435,19 @@ const AdminDashboard = () => {
                             ))}
                           </select>
                         ) : (
-                          <input value={form[key]} onChange={e => setForm({ ...form, [key]: e.target.value })} style={{ padding: "0.6rem", borderRadius: "8px", border: "1px solid #d1d5db", width: "100%", boxSizing: "border-box" }} required={['name', 'serial_no', 'price', 'stock'].includes(key)} />
+                          <input value={form[key]} onChange={e => setForm({ ...form, [key]: e.target.value })} style={{ padding: "0.6rem", borderRadius: "8px", border: "1px solid #d1d5db", width: "100%", boxSizing: "border-box" }} required={['name', 'serial_no', 'price', 'stock'].includes(key)} maxLength={{ name: 255, model: 255, serial_no: 100, warranty: 100, distributor: 255 }[key] || undefined} />
                         )}
                       </div>
                     ))}
                   </div>
                   <div style={{ marginTop: "1rem" }}>
                     <label style={{ fontSize: "0.8rem", fontWeight: "700", color: "#6b7280", display: "block", marginBottom: "4px" }}>Image URL</label>
-                    <input value={form.image_url} onChange={e => setForm({ ...form, image_url: e.target.value })} placeholder="https://images.unsplash.com/..." style={{ ...fInputStyle, width: "100%", boxSizing: "border-box" }} />
+                    <input value={form.image_url} onChange={e => setForm({ ...form, image_url: e.target.value })} placeholder="https://images.unsplash.com/..." style={{ ...fInputStyle, width: "100%", boxSizing: "border-box" }} maxLength={1000} />
                     {form.image_url && <img src={form.image_url} alt="preview" style={{ marginTop: "0.5rem", width: "120px", height: "80px", objectFit: "cover", borderRadius: "8px" }} onError={e => e.target.style.display = "none"} />}
                   </div>
                   <div style={{ marginTop: "1rem" }}>
                     <label style={{ fontSize: "0.8rem", fontWeight: "700", color: "#6b7280", display: "block", marginBottom: "4px" }}>Description</label>
-                    <textarea value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} rows={3} style={{ ...fInputStyle, width: "100%", boxSizing: "border-box", resize: "vertical" }} />
+                    <textarea value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} rows={3} style={{ ...fInputStyle, width: "100%", boxSizing: "border-box", resize: "vertical" }} maxLength={2000} />
                   </div>
                   <div style={{ display: "flex", gap: "1rem", marginTop: "1rem" }}>
                     <button type="submit" style={{ background: "#b91c1c", color: "#fff", border: "none", padding: "0.7rem 1.5rem", borderRadius: "8px", cursor: "pointer", fontWeight: "700" }}>{editProduct ? "Save Changes" : "Add Product"}</button>
@@ -535,11 +535,11 @@ const AdminDashboard = () => {
                   <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: "1rem" }}>
                     <div>
                       <label style={{ fontSize: "0.8rem", fontWeight: "700", color: "#6b7280", display: "block", marginBottom: "4px" }}>Name</label>
-                      <input value={categoryForm.name} onChange={e => setCategoryForm({ ...categoryForm, name: e.target.value })} style={{ padding: "0.6rem", borderRadius: "8px", border: "1px solid #d1d5db", width: "100%", boxSizing: "border-box" }} required />
+                      <input value={categoryForm.name} onChange={e => setCategoryForm({ ...categoryForm, name: e.target.value })} style={{ padding: "0.6rem", borderRadius: "8px", border: "1px solid #d1d5db", width: "100%", boxSizing: "border-box" }} required maxLength={100} />
                     </div>
                     <div>
                       <label style={{ fontSize: "0.8rem", fontWeight: "700", color: "#6b7280", display: "block", marginBottom: "4px" }}>Description</label>
-                      <textarea value={categoryForm.description} onChange={e => setCategoryForm({ ...categoryForm, description: e.target.value })} rows={3} style={{ padding: "0.6rem", borderRadius: "8px", border: "1px solid #d1d5db", width: "100%", boxSizing: "border-box", resize: "vertical" }} />
+                      <textarea value={categoryForm.description} onChange={e => setCategoryForm({ ...categoryForm, description: e.target.value })} rows={3} style={{ padding: "0.6rem", borderRadius: "8px", border: "1px solid #d1d5db", width: "100%", boxSizing: "border-box", resize: "vertical" }} maxLength={500} />
                     </div>
                   </div>
                   <div style={{ display: "flex", gap: "1rem", marginTop: "1rem" }}>

@@ -211,6 +211,7 @@ const MyCards = () => {
               onChange={handleCardNumberChange}
               placeholder="1234 5678 9012 3456"
               inputMode="numeric"
+              maxLength={19}
               style={s.input}
             />
             <label style={s.label}>CARDHOLDER NAME</label>
@@ -218,6 +219,7 @@ const MyCards = () => {
               value={form.cardholder_name}
               onChange={(e) => setForm({ ...form, cardholder_name: e.target.value })}
               placeholder="Name as printed on card"
+              maxLength={255}
               style={s.input}
             />
             <div style={{ display: "flex", gap: "0.75rem" }}>

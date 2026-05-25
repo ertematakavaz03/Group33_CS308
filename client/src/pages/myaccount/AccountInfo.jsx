@@ -6,10 +6,27 @@ const AccountInfo = () => {
   const raw = JSON.parse(localStorage.getItem("user"));
   const currentUser = raw?.user || raw;
 
+  const formatPhoneDisplay = (digits) => {
+    const d = String(digits || '').replace(/\D/g, '');
+    if (d.length !== 10) return digits || '';
+    return `0 (${d.slice(0, 3)}) ${d.slice(3, 6)} ${d.slice(6, 8)} ${d.slice(8)}`;
+  };
+
+  const formatPhoneInput = (value) => {
+    let digits = value.replace(/\D/g, '');
+    if (digits.startsWith('0')) digits = digits.slice(1);
+    if (digits.length > 10) digits = digits.slice(0, 10);
+    if (digits.length === 0) return '';
+    if (digits.length <= 3) return `0 (${digits}`;
+    if (digits.length <= 6) return `0 (${digits.slice(0, 3)}) ${digits.slice(3)}`;
+    if (digits.length <= 8) return `0 (${digits.slice(0, 3)}) ${digits.slice(3, 6)} ${digits.slice(6)}`;
+    return `0 (${digits.slice(0, 3)}) ${digits.slice(3, 6)} ${digits.slice(6, 8)} ${digits.slice(8)}`;
+  };
+
   const [form, setForm] = useState({
     name: currentUser?.name || '',
     email: currentUser?.email || '',
-    phone: currentUser?.phone || '',
+    phone: formatPhoneDisplay(currentUser?.phone),
     tax_id: currentUser?.tax_id || '',
     password: '',
     confirmPassword: '',
@@ -32,7 +49,13 @@ const AccountInfo = () => {
   const defaultAddress = addresses.find((a) => a.is_default) || addresses[0];
   const legacyHomeAddress = currentUser?.home_address;
 
-  const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
+  const handleChange = (e) => {
+    if (e.target.name === 'phone') {
+      setForm({ ...form, phone: formatPhoneInput(e.target.value) });
+    } else {
+      setForm({ ...form, [e.target.name]: e.target.value });
+    }
+  };
 
   const handleSave = async () => {
     if (form.password && form.password !== form.confirmPassword) {
@@ -43,6 +66,12 @@ const AccountInfo = () => {
       setStatus({ msg: "Password must be at least 6 characters.", error: true });
       return;
     }
+    const rawPhoneDigits = form.phone.replace(/\D/g, '');
+    const normalizedPhone = rawPhoneDigits.startsWith('0') ? rawPhoneDigits.slice(1) : rawPhoneDigits;
+    if (normalizedPhone.length !== 10) {
+      setStatus({ msg: "Phone number must be exactly 10 digits.", error: true });
+      return;
+    }
     try {
       const res = await fetch(`http://localhost:5001/api/auth/update/${currentUser.id}`, {
         method: 'PUT',
@@ -50,7 +79,7 @@ const AccountInfo = () => {
         body: JSON.stringify({
           name: form.name,
           email: form.email,
-          phone: form.phone,
+          phone: normalizedPhone,
           tax_id: form.tax_id,
           password: form.password || ''
         })
@@ -108,25 +137,25 @@ const AccountInfo = () => {
           <div>
             <label style={s.label}>Full Name</label>
             {isEditing
-              ? <input name="name" value={form.name} onChange={handleChange} style={s.input} />
+              ? <input name="name" value={form.name} onChange={handleChange} style={s.input} maxLength={255} />
               : <div style={s.value}>{currentUser?.name}</div>}
           </div>
           <div>
             <label style={s.label}>Email Address</label>
             {isEditing
-              ? <input name="email" type="email" value={form.email} onChange={handleChange} style={s.input} />
+              ? <input name="email" type="email" value={form.email} onChange={handleChange} style={s.input} maxLength={255} />
               : <div style={s.value}>{currentUser?.email}</div>}
           </div>
           <div>
             <label style={s.label}>Phone Number</label>
             {isEditing
-              ? <input name="phone" type="tel" value={form.phone} onChange={handleChange} style={s.input} placeholder="5xxxxxxxxx" />
-              : <div style={s.value}>{currentUser?.phone || '—'}</div>}
+              ? <input name="phone" type="tel" value={form.phone} onChange={handleChange} style={s.input} placeholder="0 (5XX) XXX XX XX" maxLength={17} />
+              : <div style={s.value}>{formatPhoneDisplay(currentUser?.phone) || '—'}</div>}
           </div>
           <div>
             <label style={s.label}>Tax ID</label>
             {isEditing
-              ? <input name="tax_id" value={form.tax_id} onChange={handleChange} style={s.input} placeholder="Optional" />
+              ? <input name="tax_id" value={form.tax_id} onChange={(e) => setForm({ ...form, tax_id: e.target.value.replace(/\D/g, '').slice(0, 11) })} style={s.input} placeholder="Optional (10-11 digits)" maxLength={11} inputMode="numeric" />
               : <div style={s.value}>{currentUser?.tax_id || '—'}</div>}
           </div>
         </div>
@@ -160,11 +189,11 @@ const AccountInfo = () => {
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
               <div>
                 <label style={s.label}>New Password</label>
-                <input name="password" type="password" value={form.password} onChange={handleChange} style={s.input} placeholder="Min. 6 characters" />
+                <input name="password" type="password" value={form.password} onChange={handleChange} style={s.input} placeholder="Min. 6 characters" maxLength={128} />
               </div>
               <div>
                 <label style={s.label}>Confirm New Password</label>
-                <input name="confirmPassword" type="password" value={form.confirmPassword} onChange={handleChange} style={s.input} placeholder="Repeat password" />
+                <input name="confirmPassword" type="password" value={form.confirmPassword} onChange={handleChange} style={s.input} placeholder="Repeat password" maxLength={128} />
               </div>
             </div>
             <div style={{ display: "flex", gap: "0.75rem", marginTop: "1.25rem" }}>
