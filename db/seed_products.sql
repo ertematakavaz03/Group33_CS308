@@ -1,6 +1,15 @@
 
 -- Placeholder products
 
+INSERT INTO categories (name, description) VALUES
+('Electronics', 'Consumer electronics, gadgets, and smart devices.'),
+('Clothing', 'Apparel, shoes, bags, and everyday wear.'),
+('Home & Kitchen', 'Home appliances, kitchen tools, and household products.'),
+('Books', 'Books, notebooks, and reading materials.'),
+('Sports & Outdoors', 'Fitness gear, sports equipment, and outdoor products.')
+ON CONFLICT (name) DO UPDATE
+SET description = EXCLUDED.description;
+
 INSERT INTO products (name, model, serial_no, description, stock, price, warranty, distributor, status, category, image_url) VALUES 
 ('Wireless Noise-Canceling Headphones', 'QuietPro 300', 'SN-EL-001', 'High quality noise-canceling headphones with 30 hour battery life.', 12, 150.00, '1 Year', 'TechAudio Inc', 'active', 'Electronics', 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=500&q=80'),
 ('Men''s Running Shoes', 'SpeedRunner V2', 'SN-CL-002', 'Lightweight athletic running shoes.', 5, 85.00, 'No Warranty', 'SportsFootwear Ltd', 'active', 'Clothing', 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=500&q=80'),

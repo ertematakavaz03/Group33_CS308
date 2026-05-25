@@ -25,6 +25,21 @@ describe('GET /api/products', () => {
         expect(res.body[0].name).toBe('Test Laptop');
     });
 
+    test('aggregates product ratings using only approved reviews', async () => {
+        mockDb.query.mockResolvedValueOnce({
+            rows: [{ ...fakeProduct, average_rating: '4.5', review_count: 2 }]
+        });
+
+        const res = await request(app).get('/api/products');
+        const sql = mockDb.query.mock.calls[0][0];
+
+        expect(res.status).toBe(200);
+        expect(res.body[0]).toMatchObject({ average_rating: '4.5', review_count: 2 });
+        expect(sql).toMatch(/AVG\(r\.rating\)/);
+        expect(sql).toMatch(/COUNT\(r\.rating\)::int AS review_count/);
+        expect(sql).toMatch(/r\.product_id = p\.id AND r\.status = 'approved'/);
+    });
+
     test('returns 500 on database error', async () => {
         mockDb.query.mockRejectedValueOnce(new Error('DB error'));
 
