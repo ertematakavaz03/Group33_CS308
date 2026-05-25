@@ -23,6 +23,7 @@ const AccountInfo = () => {
     return `0 (${digits.slice(0, 3)}) ${digits.slice(3, 6)} ${digits.slice(6, 8)} ${digits.slice(8)}`;
   };
 
+  const [liveUser, setLiveUser] = useState(currentUser);
   const [form, setForm] = useState({
     name: currentUser?.name || '',
     email: currentUser?.email || '',
@@ -38,16 +39,39 @@ const AccountInfo = () => {
 
   useEffect(() => {
     if (!currentUser?.id) return;
+    fetch(`http://localhost:5001/api/auth/user/${currentUser.id}`)
+      .then((r) => r.json())
+      .then((data) => {
+        if (!data.user) return;
+        const fresh = data.user;
+        setLiveUser(fresh);
+        setForm((f) => ({
+          ...f,
+          name: fresh.name || '',
+          email: fresh.email || '',
+          phone: formatPhoneDisplay(fresh.phone),
+          tax_id: fresh.tax_id || '',
+        }));
+        const updated = raw?.user
+          ? { ...raw, user: { ...raw.user, ...fresh } }
+          : { user: fresh };
+        localStorage.setItem('user', JSON.stringify(updated));
+      })
+      .catch(() => {});
+  }, [currentUser?.id]);
+
+  useEffect(() => {
+    if (!currentUser?.id) return;
     fetch(`http://localhost:5001/api/addresses/${currentUser.id}`)
       .then((res) => res.json())
       .then((data) => setAddresses(Array.isArray(data) ? data : []))
       .catch(() => setAddresses([]));
   }, [currentUser?.id]);
 
-  const initials = (currentUser?.name || "U").split(" ").map(w => w[0]).join("").toUpperCase().slice(0, 2);
-  const roleLabel = currentUser?.role ? currentUser.role.charAt(0).toUpperCase() + currentUser.role.slice(1) : "";
+  const initials = (liveUser?.name || "U").split(" ").map(w => w[0]).join("").toUpperCase().slice(0, 2);
+  const roleLabel = liveUser?.role ? liveUser.role.charAt(0).toUpperCase() + liveUser.role.slice(1) : "";
   const defaultAddress = addresses.find((a) => a.is_default) || addresses[0];
-  const legacyHomeAddress = currentUser?.home_address;
+  const legacyHomeAddress = liveUser?.home_address;
 
   const handleChange = (e) => {
     if (e.target.name === 'phone') {
@@ -58,13 +82,20 @@ const AccountInfo = () => {
   };
 
   const handleSave = async () => {
-    if (form.password && form.password !== form.confirmPassword) {
-      setStatus({ msg: "Passwords do not match.", error: true });
-      return;
-    }
-    if (form.password && form.password.length < 6) {
-      setStatus({ msg: "Password must be at least 6 characters.", error: true });
-      return;
+    const changingPassword = form.password || form.confirmPassword;
+    if (changingPassword) {
+      if (!form.password || !form.confirmPassword) {
+        setStatus({ msg: "Please fill in both password fields to change your password.", error: true });
+        return;
+      }
+      if (form.password !== form.confirmPassword) {
+        setStatus({ msg: "Passwords do not match.", error: true });
+        return;
+      }
+      if (form.password.length < 6) {
+        setStatus({ msg: "Password must be at least 6 characters.", error: true });
+        return;
+      }
     }
     const rawPhoneDigits = form.phone.replace(/\D/g, '');
     const normalizedPhone = rawPhoneDigits.startsWith('0') ? rawPhoneDigits.slice(1) : rawPhoneDigits;
@@ -87,10 +118,11 @@ const AccountInfo = () => {
       const data = await res.json();
       if (!res.ok) { setStatus({ msg: data.error || "Update failed.", error: true }); return; }
 
-      // update localStorage
+      // update localStorage and live display
       const updated = { ...raw, user: { ...(raw?.user || raw), ...data.user } };
       localStorage.setItem('user', JSON.stringify(updated));
       window.dispatchEvent(new Event('userChanged'));
+      setLiveUser(data.user);
 
       setStatus({ msg: "Profile updated successfully!", error: false });
       setIsEditing(false);
@@ -115,7 +147,7 @@ const AccountInfo = () => {
           <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
             <div style={s.avatar}>{initials}</div>
             <div>
-              <h2 style={{ margin: "0 0 4px", fontSize: "1.2rem", fontWeight: "800", color: "#111827" }}>{currentUser?.name}</h2>
+              <h2 style={{ margin: "0 0 4px", fontSize: "1.2rem", fontWeight: "800", color: "#111827" }}>{liveUser?.name}</h2>
               <span style={{ display: "inline-block", background: "#FEF2F2", color: "var(--pazaryolu-red)", padding: "2px 12px", borderRadius: "999px", fontSize: "0.75rem", fontWeight: "700" }}>{roleLabel}</span>
             </div>
           </div>
@@ -138,25 +170,25 @@ const AccountInfo = () => {
             <label style={s.label}>Full Name</label>
             {isEditing
               ? <input name="name" value={form.name} onChange={handleChange} style={s.input} maxLength={255} />
-              : <div style={s.value}>{currentUser?.name}</div>}
+              : <div style={s.value}>{liveUser?.name}</div>}
           </div>
           <div>
             <label style={s.label}>Email Address</label>
             {isEditing
               ? <input name="email" type="email" value={form.email} onChange={handleChange} style={s.input} maxLength={255} />
-              : <div style={s.value}>{currentUser?.email}</div>}
+              : <div style={s.value}>{liveUser?.email}</div>}
           </div>
           <div>
             <label style={s.label}>Phone Number</label>
             {isEditing
               ? <input name="phone" type="tel" value={form.phone} onChange={handleChange} style={s.input} placeholder="0 (5XX) XXX XX XX" maxLength={17} />
-              : <div style={s.value}>{formatPhoneDisplay(currentUser?.phone) || '—'}</div>}
+              : <div style={s.value}>{formatPhoneDisplay(liveUser?.phone) || '—'}</div>}
           </div>
           <div>
             <label style={s.label}>Tax ID</label>
             {isEditing
               ? <input name="tax_id" value={form.tax_id} onChange={(e) => setForm({ ...form, tax_id: e.target.value.replace(/\D/g, '').slice(0, 11) })} style={s.input} placeholder="Optional (10-11 digits)" maxLength={11} inputMode="numeric" />
-              : <div style={s.value}>{currentUser?.tax_id || '—'}</div>}
+              : <div style={s.value}>{liveUser?.tax_id || '—'}</div>}
           </div>
         </div>
 
@@ -189,11 +221,11 @@ const AccountInfo = () => {
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
               <div>
                 <label style={s.label}>New Password</label>
-                <input name="password" type="password" value={form.password} onChange={handleChange} style={s.input} placeholder="Min. 6 characters" maxLength={128} />
+                <input name="password" type="password" value={form.password} onChange={handleChange} style={s.input} placeholder="Min. 6 characters" maxLength={128} autoComplete="new-password" />
               </div>
               <div>
                 <label style={s.label}>Confirm New Password</label>
-                <input name="confirmPassword" type="password" value={form.confirmPassword} onChange={handleChange} style={s.input} placeholder="Repeat password" maxLength={128} />
+                <input name="confirmPassword" type="password" value={form.confirmPassword} onChange={handleChange} style={s.input} placeholder="Repeat password" maxLength={128} autoComplete="new-password" />
               </div>
             </div>
             <div style={{ display: "flex", gap: "0.75rem", marginTop: "1.25rem" }}>

@@ -21,6 +21,23 @@ const loginLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 10, message: 'To
 const registerLimiter = rateLimit({ windowMs: 60 * 60 * 1000, max: 15, message: 'Too many sign-up attempts. Please try again later.' });
 
 
+// get user profile by id
+router.get('/user/:id', async (req, res) => {
+    try {
+        const result = await req.db.query(
+            'SELECT id, name, email, phone, tax_id, home_address, role FROM users WHERE id = $1',
+            [req.params.id]
+        );
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+        res.json({ user: result.rows[0] });
+    } catch (err) {
+        console.error('Get user error:', err);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
 // verify if user still exists
 router.get('/verify/:id', async (req, res) => {
     try {
