@@ -2,7 +2,6 @@ const express = require('express');
 const router = express.Router();
 const sendOrderEmail = require('../utils/sendOrderEmail');
 const generateInvoicePDF = require('../utils/generateInvoicePDF');
-const adminSessions = require('../utils/adminSessions');
 
 // customer checkout
 router.post('/checkout', async (req, res) => {

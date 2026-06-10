@@ -1,11 +1,16 @@
 const express = require('express');
-const crypto = require('crypto');
+const jwt = require('jsonwebtoken');
 const bcrypt = require('bcrypt');
 const router = express.Router();
 const sendDiscountEmail = require('../utils/sendDiscountEmail');
 const rateLimit = require('../utils/rateLimiter');
-const adminSessions = require('../utils/adminSessions');
 const generateInvoicePDF = require('../utils/generateInvoicePDF');
+
+// Admin auth uses stateless JWTs so a token stays valid across server restarts
+// (there is no in-memory session store to wipe). Falls back to a dev secret if
+// JWT_SECRET is not set — set a real one in server/.env for production.
+const JWT_SECRET = process.env.JWT_SECRET || 'pazaryolu_admin_dev_secret';
+const ADMIN_TOKEN_TTL = '12h';
 const sendRefundEmail = require('../utils/sendRefundEmail');
 
 // Brute-force protection on the admin login endpoint.
@@ -74,16 +79,22 @@ const notifyWishlistUsers = async (db, product) => {
 
 
 
-// Auth middleware
+// Auth middleware — verifies the JWT signature. No server-side lookup, so the
+// token keeps working after a restart (which is what previously caused random
+// "Unauthorized" errors mid-session).
 const auth = (req, res, next) => {
   const token = req.headers.authorization?.split(" ")[1];
-
-  if (!token || !adminSessions[token]) {
+  if (!token) {
     return res.status(401).json({ error: "Unauthorized" });
   }
-
-  req.adminRole = adminSessions[token].role;
-  next();
+  try {
+    const payload = jwt.verify(token, JWT_SECRET);
+    req.adminRole = payload.role;
+    req.adminUser = payload.username;
+    next();
+  } catch {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
 };
 
 const requireRole = (...allowedRoles) => {
@@ -112,12 +123,14 @@ router.post('/login', adminLoginLimiter, async (req, res) => {
       return res.status(401).json({ error: "Invalid credentials" });
     }
 
-    // Issue a fresh, unique session token so concurrent admin roles never collide.
-    const token = crypto.randomBytes(32).toString('hex');
-    adminSessions[token] = {
-      username: admin.username,
-      role: admin.role
-    };
+    // Issue a signed, stateless JWT. It carries the role, survives server
+    // restarts, and needs no server-side session store. Concurrent roles never
+    // collide because each token is self-contained.
+    const token = jwt.sign(
+      { id: admin.id, username: admin.username, role: admin.role },
+      JWT_SECRET,
+      { expiresIn: ADMIN_TOKEN_TTL }
+    );
 
     res.json({
       token,
@@ -129,10 +142,9 @@ router.post('/login', adminLoginLimiter, async (req, res) => {
   }
 });
 
-// Logout — invalidate the current session token
+// Logout — with stateless JWTs there is no server session to clear, so the
+// client just drops its token. Kept for API compatibility.
 router.post('/logout', auth, (req, res) => {
-  const token = req.headers.authorization?.split(" ")[1];
-  delete adminSessions[token];
   res.json({ message: 'Logged out' });
 });
 
@@ -141,8 +153,9 @@ router.get('/orders/:id/invoice', async (req, res) => {
   try {
     const { id } = req.params;
     const { adminToken } = req.query;
-
-    if (!adminToken || !adminSessions[adminToken]) {
+    try {
+      jwt.verify(adminToken, JWT_SECRET);
+    } catch {
       return res.status(401).json({ error: "Unauthorized" });
     }
 
