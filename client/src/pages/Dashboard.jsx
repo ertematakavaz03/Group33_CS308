@@ -867,8 +867,20 @@ const Dashboard = () => {
                           onError={(e) => { e.target.style.display = 'none'; }}
                         />
                       )}
+                      <button
+                        type="button"
+                        className={`wishlist-image-btn ${isWishlisted ? 'active' : ''}`}
+                        disabled={wishlistBusy}
+                        title={isWishlisted ? 'Remove from wishlist' : 'Add to wishlist'}
+                        aria-label={isWishlisted ? `Remove ${product.name} from wishlist` : `Add ${product.name} to wishlist`}
+                        onClick={(e) => handleToggleWishlist(product, e)}
+                      >
+                        <svg width="21" height="21" viewBox="0 0 24 24" fill={isWishlisted ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
+                        </svg>
+                      </button>
                       {product.is_on_discount && (
-                        <span style={{ position: 'absolute', top: '8px', right: '8px', background: '#dc2626', color: '#fff', padding: '4px 10px', borderRadius: '999px', fontSize: '0.72rem', fontWeight: '800', zIndex: 15, boxShadow: '0 2px 8px rgba(220,38,38,0.35)' }}>
+                        <span style={{ position: 'absolute', top: '62px', right: '10px', background: '#dc2626', color: '#fff', padding: '4px 10px', borderRadius: '999px', fontSize: '0.72rem', fontWeight: '800', zIndex: 15, boxShadow: '0 2px 8px rgba(220,38,38,0.35)' }}>
                           -{parseFloat(product.discount_percentage).toFixed(0)}%
                         </span>
                       )}
@@ -897,30 +909,16 @@ const Dashboard = () => {
                           <span className="stock-badge ok">In Stock ({product.stock})</span>
                         )}
                       </div>
-                      <div className="product-actions">
-                        <button
-                          className="add-to-cart-btn"
-                          disabled={product.stock <= 0}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleAddToCart(product);
-                          }}
-                        >
-                          {product.stock <= 0 ? 'Unavailable' : 'Add to Cart'}
-                        </button>
-                        <button
-                          type="button"
-                          className={`wishlist-card-btn ${isWishlisted ? 'active' : ''}`}
-                          disabled={wishlistBusy}
-                          title={isWishlisted ? 'Remove from wishlist' : 'Add to wishlist'}
-                          aria-label={isWishlisted ? `Remove ${product.name} from wishlist` : `Add ${product.name} to wishlist`}
-                          onClick={(e) => handleToggleWishlist(product, e)}
-                        >
-                          <svg width="19" height="19" viewBox="0 0 24 24" fill={isWishlisted ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                            <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
-                          </svg>
-                        </button>
-                      </div>
+                      <button
+                        className="add-to-cart-btn"
+                        disabled={product.stock <= 0}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleAddToCart(product);
+                        }}
+                      >
+                        {product.stock <= 0 ? 'Unavailable' : 'Add to Cart'}
+                      </button>
                     </div>
                   </div>
                   );

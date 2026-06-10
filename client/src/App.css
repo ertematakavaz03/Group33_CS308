@@ -299,46 +299,36 @@ h3 {
   color: var(--white);
 }
 
-.product-actions {
-  display: flex;
-  align-items: stretch;
-  gap: 0.55rem;
-  margin-top: auto;
-}
-
-.product-actions .add-to-cart-btn {
-  flex: 1;
-  min-width: 0;
-}
-
-.wishlist-card-btn {
-  width: 46px;
-  min-width: 46px;
-  border: 1.5px solid #fecaca;
-  background: #fff7f7;
-  color: var(--pazaryolu-red);
-  border-radius: 8px;
+.wishlist-image-btn {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 44px;
+  height: 44px;
+  border: 1px solid rgba(17, 24, 39, 0.08);
+  background: rgba(255, 255, 255, 0.96);
+  color: #111827;
+  border-radius: 50%;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
+  z-index: 20;
+  box-shadow: 0 8px 20px rgba(17, 24, 39, 0.18);
   transition: all 0.2s ease;
 }
 
-.wishlist-card-btn:hover {
-  background: var(--pazaryolu-red);
-  border-color: var(--pazaryolu-red);
-  color: var(--white);
-  transform: translateY(-1px);
+.wishlist-image-btn:hover {
+  color: var(--pazaryolu-red);
+  transform: translateY(-1px) scale(1.04);
+  box-shadow: 0 10px 24px rgba(17, 24, 39, 0.22);
 }
 
-.wishlist-card-btn.active {
-  background: var(--pazaryolu-red);
-  border-color: var(--pazaryolu-red);
-  color: var(--white);
+.wishlist-image-btn.active {
+  color: var(--pazaryolu-red);
 }
 
-.wishlist-card-btn:disabled {
+.wishlist-image-btn:disabled {
   cursor: wait;
   opacity: 0.7;
   transform: none;
