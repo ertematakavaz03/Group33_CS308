@@ -32,17 +32,29 @@ const notifyWishlistUsers = async (db, product) => {
 
     const oldPrice = Number(product.price);
     const newPrice = Math.round(oldPrice * (1 - pct / 100) * 100) / 100;
+    let createdCount = 0;
 
     for (const user of rows) {
-      await db.query(
+      const title = `Discount on ${product.name}`;
+      const message = `${product.name} is now ${pct}% off: $${oldPrice.toFixed(2)} -> $${newPrice.toFixed(2)}.`;
+      const inserted = await db.query(
         `INSERT INTO notifications (user_id, type, title, message)
-         VALUES ($1, 'discount', $2, $3)`,
-        [
-          user.id,
-          `Discount on ${product.name}`,
-          `${product.name} is now ${pct}% off: $${oldPrice.toFixed(2)} -> $${newPrice.toFixed(2)}.`
-        ]
+         SELECT $1, 'discount', $2, $3
+         WHERE NOT EXISTS (
+           SELECT 1
+           FROM notifications
+           WHERE user_id = $1
+             AND type = 'discount'
+             AND title = $2
+             AND message = $3
+             AND created_at > NOW() - INTERVAL '1 hour'
+         )
+         RETURNING id`,
+        [user.id, title, message]
       );
+      if (inserted.rows.length === 0) continue;
+      createdCount += 1;
+
       sendDiscountEmail(user.email, {
         customerName: user.name,
         productId: product.id,
@@ -52,8 +64,8 @@ const notifyWishlistUsers = async (db, product) => {
         discountPercentage: pct
       }).catch((err) => console.error(`Discount email failed for ${user.email}:`, err.message));
     }
-    if (rows.length > 0) {
-      console.log(`Discount notification queued for ${rows.length} wishlist user(s) on product ${product.id}`);
+    if (createdCount > 0) {
+      console.log(`Discount notification queued for ${createdCount} wishlist user(s) on product ${product.id}`);
     }
   } catch (err) {
     console.error('notifyWishlistUsers error:', err);
