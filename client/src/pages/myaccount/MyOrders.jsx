@@ -17,6 +17,12 @@ const fmt = {
   price: (n)   => "$" + Number(n).toFixed(2),
 };
 
+const isWithinReturnWindow = (iso) => {
+  const created = new Date(iso).getTime();
+  if (!Number.isFinite(created)) return false;
+  return Date.now() - created <= 30 * 24 * 60 * 60 * 1000;
+};
+
 const MyOrders = () => {
   const navigate = useNavigate();
   const [orders, setOrders]       = useState([]);
@@ -174,7 +180,8 @@ const MyOrders = () => {
                 <div style={{ display: "flex", flexDirection: "column", gap: "10px", marginBottom: "1.5rem" }}>
                   {order.items?.map((item, idx) => {
                     const ret = returnByItem[item.order_item_id];
-                    const canReturn = order.status === "delivered" && !ret && item.order_item_id;
+                    const inReturnWindow = isWithinReturnWindow(order.created_at);
+                    const canReturn = order.status === "delivered" && inReturnWindow && !ret && item.order_item_id;
                     return (
                     <div key={idx} style={s.itemRow}>
                       <div style={s.itemImg}>
@@ -195,6 +202,11 @@ const MyOrders = () => {
                             }}>
                               Return {ret.status}
                             </span>
+                          </div>
+                        )}
+                        {order.status === "delivered" && !ret && !inReturnWindow && (
+                          <div style={{ marginTop: "5px", color: "#9CA3AF", fontSize: "0.75rem", fontWeight: "700" }}>
+                            Return window expired
                           </div>
                         )}
                       </div>

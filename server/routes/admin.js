@@ -6,6 +6,7 @@ const sendDiscountEmail = require('../utils/sendDiscountEmail');
 const rateLimit = require('../utils/rateLimiter');
 const adminSessions = require('../utils/adminSessions');
 const generateInvoicePDF = require('../utils/generateInvoicePDF');
+const sendRefundEmail = require('../utils/sendRefundEmail');
 
 // Brute-force protection on the admin login endpoint.
 const adminLoginLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 10, message: 'Too many login attempts. Please try again later.' });
@@ -22,7 +23,7 @@ const notifyWishlistUsers = async (db, product) => {
     if (!startOk || !endOk) return; // discount not active yet — don't notify
 
     const { rows } = await db.query(
-      `SELECT u.name, u.email
+      `SELECT u.id, u.name, u.email
        FROM wishlist_items w
        JOIN users u ON u.id = w.user_id
        WHERE w.product_id = $1`,
@@ -33,6 +34,15 @@ const notifyWishlistUsers = async (db, product) => {
     const newPrice = Math.round(oldPrice * (1 - pct / 100) * 100) / 100;
 
     for (const user of rows) {
+      await db.query(
+        `INSERT INTO notifications (user_id, type, title, message)
+         VALUES ($1, 'discount', $2, $3)`,
+        [
+          user.id,
+          `Discount on ${product.name}`,
+          `${product.name} is now ${pct}% off: $${oldPrice.toFixed(2)} -> $${newPrice.toFixed(2)}.`
+        ]
+      );
       sendDiscountEmail(user.email, {
         customerName: user.name,
         productId: product.id,
@@ -560,7 +570,15 @@ router.put('/returns/:id', auth, requireRole("sales_manager"), async (req, res) 
     await req.db.query('BEGIN');
 
     const current = await req.db.query(
-      'SELECT * FROM return_requests WHERE id = $1 FOR UPDATE',
+      `SELECT rr.*, u.name AS user_name, u.email AS user_email,
+              p.name AS product_name, oi.price_at_purchase,
+              (oi.price_at_purchase * rr.quantity) AS refund_amount
+       FROM return_requests rr
+       LEFT JOIN users u ON u.id = rr.user_id
+       LEFT JOIN products p ON p.id = rr.product_id
+       LEFT JOIN order_items oi ON oi.id = rr.order_item_id
+       WHERE rr.id = $1
+       FOR UPDATE OF rr`,
       [id]
     );
     if (current.rows.length === 0) {
@@ -593,6 +611,29 @@ router.put('/returns/:id', auth, requireRole("sales_manager"), async (req, res) 
     );
 
     await req.db.query('COMMIT');
+
+    if (status === 'approved') {
+      try {
+        await req.db.query(
+          `INSERT INTO notifications (user_id, type, title, message)
+           VALUES ($1, 'refund', $2, $3)`,
+          [
+            request.user_id,
+            `Refund approved for ${request.product_name || 'your product'}`,
+            `Your refund of $${Number(request.refund_amount || 0).toFixed(2)} has been approved and the returned item was added back to stock.`
+          ]
+        );
+      } catch (err) {
+        console.error('Refund notification insert failed:', err);
+      }
+
+      sendRefundEmail(request.user_email, {
+        customerName: request.user_name,
+        productName: request.product_name,
+        refundAmount: request.refund_amount
+      }).catch((err) => console.error(`Refund email failed for ${request.user_email}:`, err.message));
+    }
+
     res.json({ message: `Return request ${status}`, request: updated.rows[0] });
   } catch (err) {
     try { await req.db.query('ROLLBACK'); } catch (_) {}
