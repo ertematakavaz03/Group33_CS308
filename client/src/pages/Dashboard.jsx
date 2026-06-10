@@ -11,6 +11,8 @@ const defaultCategories = [
   "Automotive"
 ];
 
+const DISCOUNTED_CATEGORY = "Discounted Products";
+
 const Dashboard = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [activeCategory, setActiveCategory] = useState("All Categories");
@@ -147,6 +149,7 @@ const Dashboard = () => {
   const categories = [
     "All Categories",
     "Top Sellers",
+    DISCOUNTED_CATEGORY,
     ...(fetchedCategories.length > 0
       ? fetchedCategories
       : defaultCategories.filter(c => c !== "All Categories"))
@@ -257,6 +260,7 @@ const Dashboard = () => {
     const categoryMatches =
       activeCategory === "All Categories" ? true :
         activeCategory === "Top Sellers" ? topSellersIds.includes(product.id) :
+        activeCategory === DISCOUNTED_CATEGORY ? product.is_on_discount === true :
           product.category === activeCategory;
 
     const term = searchTerm.toLowerCase();
@@ -275,6 +279,10 @@ const Dashboard = () => {
     if (sortOption === "price-low") return priceFor(a) - priceFor(b);
     if (sortOption === "price-high") return priceFor(b) - priceFor(a);
     if (sortOption === "popularity" || activeCategory === "Top Sellers") return compareByPopularity(a, b);
+    if (activeCategory === DISCOUNTED_CATEGORY) {
+      const discountDiff = Number(b.discount_percentage || 0) - Number(a.discount_percentage || 0);
+      if (discountDiff !== 0) return discountDiff;
+    }
     return new Date(b.created_at || 0) - new Date(a.created_at || 0);
   });
 
@@ -711,7 +719,11 @@ const Dashboard = () => {
                 {activeCategory === "All Categories" ? "Featured Items" : activeCategory}
               </h2>
               <span style={{
-                background: activeCategory === "Top Sellers" ? 'linear-gradient(135deg, #d4af37, #f0d060)' : 'var(--pazaryolu-red)',
+                background: activeCategory === "Top Sellers"
+                  ? 'linear-gradient(135deg, #d4af37, #f0d060)'
+                  : activeCategory === DISCOUNTED_CATEGORY
+                    ? '#dc2626'
+                    : 'var(--pazaryolu-red)',
                 color: '#fff',
                 padding: '3px 10px', borderRadius: '999px',
                 fontSize: '0.8rem', fontWeight: '700',
