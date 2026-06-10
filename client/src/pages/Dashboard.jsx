@@ -99,6 +99,8 @@ const Dashboard = () => {
     const savedCart = localStorage.getItem(getCartKey());
     return savedCart ? JSON.parse(savedCart) : [];
   });
+  const [wishlistIds, setWishlistIds] = useState(() => new Set());
+  const [wishlistBusyId, setWishlistBusyId] = useState(null);
 
   useEffect(() => {
     const fetchProducts = async () => {
@@ -129,6 +131,31 @@ const Dashboard = () => {
         })
         .catch(console.error);
     }
+  }, [user]);
+
+  useEffect(() => {
+    const userId = user?.user?.id || user?.id;
+    if (!userId) {
+      setWishlistIds(new Set());
+      return undefined;
+    }
+
+    const fetchWishlist = () => {
+      fetch(`http://localhost:5001/api/wishlist/${userId}`)
+        .then(res => {
+          if (!res.ok) throw new Error('Failed to fetch wishlist');
+          return res.json();
+        })
+        .then(data => {
+          const ids = Array.isArray(data) ? data.map(item => Number(item.id)) : [];
+          setWishlistIds(new Set(ids));
+        })
+        .catch(console.error);
+    };
+
+    fetchWishlist();
+    window.addEventListener('wishlistChanged', fetchWishlist);
+    return () => window.removeEventListener('wishlistChanged', fetchWishlist);
   }, [user]);
 
   useEffect(() => {
@@ -201,6 +228,55 @@ const Dashboard = () => {
       } catch (err) {
         console.error('Error adding to DB cart:', err);
       }
+    }
+  };
+
+  const handleToggleWishlist = async (product, event) => {
+    event.stopPropagation();
+
+    const userId = user?.user?.id || user?.id;
+    if (!userId) {
+      navigate('/login');
+      return;
+    }
+
+    const productId = Number(product.id);
+    if (wishlistBusyId === productId) return;
+
+    const isWishlisted = wishlistIds.has(productId);
+    setWishlistBusyId(productId);
+    setWishlistIds(prev => {
+      const next = new Set(prev);
+      if (isWishlisted) next.delete(productId);
+      else next.add(productId);
+      return next;
+    });
+
+    try {
+      const response = isWishlisted
+        ? await fetch(`http://localhost:5001/api/wishlist/${userId}/${productId}`, { method: 'DELETE' })
+        : await fetch(`http://localhost:5001/api/wishlist/${userId}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ productId })
+          });
+
+      if (!response.ok && !(isWishlisted && response.status === 404)) {
+        throw new Error('Failed to update wishlist');
+      }
+
+      window.dispatchEvent(new Event('wishlistChanged'));
+    } catch (err) {
+      console.error(err);
+      setWishlistIds(prev => {
+        const next = new Set(prev);
+        if (isWishlisted) next.add(productId);
+        else next.delete(productId);
+        return next;
+      });
+      showStockAlert('Could not update wishlist. Please try again.');
+    } finally {
+      setWishlistBusyId(null);
     }
   };
 
@@ -407,6 +483,10 @@ const Dashboard = () => {
                     {
                       to: '/myaccount/myreviews', label: 'My Reviews',
                       svg: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                    },
+                    {
+                      to: '/myaccount/wishlist', label: 'My Wishlist',
+                      svg: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
                     },
                     {
                       to: '/myaccount/addresses', label: 'My Addresses',
@@ -767,7 +847,12 @@ const Dashboard = () => {
           ) : (
             <div className="product-grid">
               {sortedProducts.length > 0 ? (
-                sortedProducts.map((product) => (
+                sortedProducts.map((product) => {
+                  const productId = Number(product.id);
+                  const isWishlisted = wishlistIds.has(productId);
+                  const wishlistBusy = wishlistBusyId === productId;
+
+                  return (
                   <div key={product.id} className={`product-card fade-in ${topSellersIds.includes(product.id) ? 'top-seller' : ''}`} onClick={() => navigate(`/product/${product.id}`)} style={{ cursor: "pointer" }}>
                     <div className="image-container">
                       {product.category && (
@@ -812,19 +897,34 @@ const Dashboard = () => {
                           <span className="stock-badge ok">In Stock ({product.stock})</span>
                         )}
                       </div>
-                      <button
-                        className="add-to-cart-btn"
-                        disabled={product.stock <= 0}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleAddToCart(product);
-                        }}
-                      >
-                        {product.stock <= 0 ? 'Unavailable' : 'Add to Cart'}
-                      </button>
+                      <div className="product-actions">
+                        <button
+                          className="add-to-cart-btn"
+                          disabled={product.stock <= 0}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleAddToCart(product);
+                          }}
+                        >
+                          {product.stock <= 0 ? 'Unavailable' : 'Add to Cart'}
+                        </button>
+                        <button
+                          type="button"
+                          className={`wishlist-card-btn ${isWishlisted ? 'active' : ''}`}
+                          disabled={wishlistBusy}
+                          title={isWishlisted ? 'Remove from wishlist' : 'Add to wishlist'}
+                          aria-label={isWishlisted ? `Remove ${product.name} from wishlist` : `Add ${product.name} to wishlist`}
+                          onClick={(e) => handleToggleWishlist(product, e)}
+                        >
+                          <svg width="19" height="19" viewBox="0 0 24 24" fill={isWishlisted ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
+                          </svg>
+                        </button>
+                      </div>
                     </div>
                   </div>
-                ))
+                  );
+                })
               ) : (
                 <div className="empty-state">
                   <svg width="64" height="64" fill="none" stroke="var(--text-muted)" strokeWidth="1.5" viewBox="0 0 24 24"><path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>

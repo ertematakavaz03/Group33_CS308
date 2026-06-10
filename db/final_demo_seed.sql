@@ -217,6 +217,13 @@ UPDATE products SET
   discount_end = NULL
 WHERE serial_no = 'SN-SO-021';
 
+INSERT INTO wishlist_items (user_id, product_id)
+SELECT u.id, p.id
+FROM users u
+JOIN products p ON p.serial_no = 'SN-EL-060'
+WHERE u.email = 'derya.kaya@example.com'
+ON CONFLICT (user_id, product_id) DO NOTHING;
+
 WITH demo_user AS (
   SELECT id AS user_id FROM users WHERE email = 'derya.kaya@example.com'
 ), demo_addr AS (

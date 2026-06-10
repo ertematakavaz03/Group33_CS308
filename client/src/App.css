@@ -299,6 +299,51 @@ h3 {
   color: var(--white);
 }
 
+.product-actions {
+  display: flex;
+  align-items: stretch;
+  gap: 0.55rem;
+  margin-top: auto;
+}
+
+.product-actions .add-to-cart-btn {
+  flex: 1;
+  min-width: 0;
+}
+
+.wishlist-card-btn {
+  width: 46px;
+  min-width: 46px;
+  border: 1.5px solid #fecaca;
+  background: #fff7f7;
+  color: var(--pazaryolu-red);
+  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.wishlist-card-btn:hover {
+  background: var(--pazaryolu-red);
+  border-color: var(--pazaryolu-red);
+  color: var(--white);
+  transform: translateY(-1px);
+}
+
+.wishlist-card-btn.active {
+  background: var(--pazaryolu-red);
+  border-color: var(--pazaryolu-red);
+  color: var(--white);
+}
+
+.wishlist-card-btn:disabled {
+  cursor: wait;
+  opacity: 0.7;
+  transform: none;
+}
+
 /* layout utilities */
 .category-pills {
   display: flex;
