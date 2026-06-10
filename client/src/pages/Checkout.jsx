@@ -1,6 +1,46 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
+const normalizeBrand = (brand) => String(brand || "").toLowerCase().replace(/\s+/g, "");
+
+const CardBrandMark = ({ brand, compact = false }) => {
+  const normalized = normalizeBrand(brand);
+  const style = compact ? compactCardLogoStyle : cardLogoStyle;
+
+  if (normalized.includes("visa")) {
+    return (
+      <svg viewBox="0 0 92 52" role="img" aria-label="Visa" style={style}>
+        <rect x="1" y="1" width="90" height="50" rx="8" fill="#fff" stroke="#e5e7eb" />
+        <text x="46" y="33" textAnchor="middle" fontSize="22" fontWeight="900" fontFamily="Arial, Helvetica, sans-serif" fill="#1A1F71">
+          VISA
+        </text>
+      </svg>
+    );
+  }
+
+  if (normalized.includes("mastercard")) {
+    return (
+      <svg viewBox="0 0 92 52" role="img" aria-label="Mastercard" style={style}>
+        <rect x="1" y="1" width="90" height="50" rx="8" fill="#fff" stroke="#e5e7eb" />
+        <circle cx="38" cy="24" r="17" fill="#EB001B" />
+        <circle cx="54" cy="24" r="17" fill="#F79E1B" fillOpacity="0.92" />
+        <text x="46" y="45" textAnchor="middle" fontSize="8" fontWeight="700" fontFamily="Arial, Helvetica, sans-serif" fill="#374151">
+          mastercard
+        </text>
+      </svg>
+    );
+  }
+
+  return (
+    <svg viewBox="0 0 92 52" role="img" aria-label="Card" style={style}>
+      <rect x="1" y="1" width="90" height="50" rx="8" fill="#fff" stroke="#e5e7eb" />
+      <rect x="12" y="14" width="68" height="8" rx="2" fill="#9ca3af" />
+      <rect x="12" y="30" width="32" height="6" rx="2" fill="#d1d5db" />
+      <rect x="50" y="30" width="30" height="6" rx="2" fill="#d1d5db" />
+    </svg>
+  );
+};
+
 const Checkout = () => {
   const navigate = useNavigate();
   const user = JSON.parse(localStorage.getItem("user") || "null");
@@ -73,7 +113,7 @@ const Checkout = () => {
   const detectCardType = (value) => {
     const cleaned = value.replace(/\s/g, "");
     if (cleaned.startsWith("4")) return "visa";
-    if (cleaned.startsWith("5")) return "mastercard";
+    if (/^(5[1-5]|2[2-7])/.test(cleaned)) return "mastercard";
     return "";
   };
 
@@ -518,6 +558,7 @@ const Checkout = () => {
                   type="radio" name="paymentCard" checked={selectedCardId === card.id}
                   onChange={() => setSelectedCardId(card.id)}
                 />
+                <CardBrandMark brand={card.card_brand} compact />
                 <span style={{ fontWeight: "700", color: "#111" }}>{card.card_brand}</span>
                 <span style={{ color: "#374151", letterSpacing: "0.05em" }}>{card.masked_number}</span>
                 <span style={{ marginLeft: "auto", color: "#9ca3af", fontSize: "0.85rem" }}>
@@ -548,13 +589,8 @@ const Checkout = () => {
             <input name="name" placeholder="Name on Card" value={form.name} onChange={handleChange} style={inputStyle} maxLength={255} />
 
             <div style={{ position: "relative", marginBottom: "1rem" }}>
-              <input name="cardNumber" placeholder="Card Number" value={form.cardNumber} onChange={handleChange} style={{ ...inputStyle, marginBottom: 0, paddingRight: "70px" }} maxLength={19} />
-              {cardType === "visa" && (
-                <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/5/5c/Visa_Inc._logo_%282021%E2%80%93present%29.svg/960px-Visa_Inc._logo_%282021%E2%80%93present%29.svg.png" alt="Visa" style={cardLogoStyle} />
-              )}
-              {cardType === "mastercard" && (
-                <img src="https://assets.weforum.org/organization/image/pyHyiLnMaQXMa0TXz0PB17X110sq_ESvDuHREqKIKP0.jpg" alt="Mastercard" style={{ ...cardLogoStyle, width: "48px", height: "30px", objectFit: "cover" }} />
-              )}
+              <input name="cardNumber" placeholder="Card Number" value={form.cardNumber} onChange={handleChange} style={{ ...inputStyle, marginBottom: 0, paddingRight: "92px" }} maxLength={19} />
+              {cardType && <CardBrandMark brand={cardType} />}
             </div>
 
             <div style={{ display: "flex", gap: "15px", marginBottom: "1rem" }}>
@@ -591,12 +627,15 @@ const cardLogoStyle = {
   right: "12px",
   top: "50%",
   transform: "translateY(-50%)",
-  width: "42px",
-  height: "26px",
-  objectFit: "contain",
-  background: "#fff",
-  padding: "2px",
-  borderRadius: "4px"
+  width: "68px",
+  height: "38px",
+  filter: "drop-shadow(0 2px 6px rgba(17, 24, 39, 0.12))"
+};
+
+const compactCardLogoStyle = {
+  width: "48px",
+  height: "28px",
+  flexShrink: 0
 };
 
 const buttonStyle = {
