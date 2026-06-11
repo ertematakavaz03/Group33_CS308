@@ -42,16 +42,19 @@ const notifyWishlistUsers = async (db, product) => {
     for (const user of rows) {
       const title = `Discount on ${product.name}`;
       const message = `${product.name} is now ${pct}% off: $${oldPrice.toFixed(2)} -> $${newPrice.toFixed(2)}.`;
+      // $2/$3 appear both in the SELECT list and in varchar/text comparisons,
+      // so they need explicit casts or Postgres fails with "inconsistent types
+      // deduced for parameter" (42P08).
       const inserted = await db.query(
         `INSERT INTO notifications (user_id, type, title, message)
-         SELECT $1, 'discount', $2, $3
+         SELECT $1::int, 'discount', $2::varchar, $3::text
          WHERE NOT EXISTS (
            SELECT 1
            FROM notifications
-           WHERE user_id = $1
+           WHERE user_id = $1::int
              AND type = 'discount'
-             AND title = $2
-             AND message = $3
+             AND title = $2::varchar
+             AND message = $3::text
              AND created_at > NOW() - INTERVAL '1 hour'
          )
          RETURNING id`,
