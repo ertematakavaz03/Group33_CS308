@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { placeholderImage } from "../../utils/placeholderImage";
 
 const fmtPrice = (n) => "$" + Number(n).toFixed(2);
 
@@ -111,10 +112,10 @@ const MyWishlist = () => {
                       <span style={s.discountBadge}>-{parseFloat(product.discount_percentage).toFixed(0)}%</span>
                     )}
                     <img
-                      src={product.image_url || `https://via.placeholder.com/400x300?text=${encodeURIComponent(product.name)}`}
+                      src={product.image_url || placeholderImage(product.name)}
                       alt={product.name}
                       style={{ width: "100%", height: "100%", objectFit: "cover" }}
-                      onError={(e) => { e.target.src = `https://via.placeholder.com/400x300?text=${encodeURIComponent(product.name)}`; }}
+                      onError={(e) => { e.target.onerror = null; e.target.src = placeholderImage(product.name); }}
                     />
                   </div>
                 </Link>

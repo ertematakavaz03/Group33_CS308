@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { placeholderImage } from '../utils/placeholderImage';
 
 const Cart = () => {
   const navigate = useNavigate();
@@ -322,10 +323,8 @@ const Cart = () => {
                     />
                   )}
                   <img
-                    src={
-                      item.image_url ||
-                      `https://via.placeholder.com/400x300?text=${encodeURIComponent(item.name)}`
-                    }
+                    src={item.image_url || placeholderImage(item.name)}
+                    onError={(e) => { e.target.onerror = null; e.target.src = placeholderImage(item.name); }}
                     alt={item.name}
                     style={{
                       width: '100%',

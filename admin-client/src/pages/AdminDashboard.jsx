@@ -786,7 +786,7 @@ const AdminDashboard = () => {
       <XAxis dataKey="name" />
       <YAxis />
       <Tooltip />
-      <Bar dataKey="total" />
+      <Bar dataKey="total" fill="#8B0000" isAnimationActive={false} />
     </BarChart>
   </ResponsiveContainer>
 </div>

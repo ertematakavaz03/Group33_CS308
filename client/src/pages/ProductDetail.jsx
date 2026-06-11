@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
+import { placeholderImage } from "../utils/placeholderImage";
 
 const ProductDetail = () => {
   const { id } = useParams();
@@ -323,10 +324,10 @@ const ProductDetail = () => {
               </span>
             )}
             <img
-              src={product.image_url || `https://via.placeholder.com/600x400?text=${encodeURIComponent(product.name)}`}
+              src={product.image_url || placeholderImage(product.name, 600, 400)}
               alt={product.name}
               style={{ width: "100%", height: "100%", objectFit: "cover" }}
-              onError={(e) => { e.target.src = `https://via.placeholder.com/600x400?text=${encodeURIComponent(product.name)}`; }}
+              onError={(e) => { e.target.onerror = null; e.target.src = placeholderImage(product.name, 600, 400); }}
             />
           </div>
 

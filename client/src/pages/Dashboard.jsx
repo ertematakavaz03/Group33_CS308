@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
+import { placeholderImage } from '../utils/placeholderImage';
 
 const defaultCategories = [
   "All Categories",
@@ -885,8 +886,9 @@ const Dashboard = () => {
                         </span>
                       )}
                       <img
-                        src={product.image_url || `https://via.placeholder.com/400x300?text=${encodeURIComponent(product.name)}`}
+                        src={product.image_url || placeholderImage(product.name)}
                         alt={product.name}
+                        onError={(e) => { e.target.onerror = null; e.target.src = placeholderImage(product.name); }}
                       />
                     </div>
                     <div className="product-info">

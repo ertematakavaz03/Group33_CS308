@@ -319,7 +319,11 @@ router.post('/products', auth, requireRole("product_manager"), async (req, res) 
       [String(name).trim(), String(model).trim(), String(serial_no).trim(), description || null, parseInt(stock, 10), parseFloat(price), warranty || null, distributor || null, category, image_url || null, 'active']
     );
     res.json(result.rows[0]);
-  } catch (err) { console.error('Admin route error:', err); res.status(500).json({ error: 'Internal server error' }); }
+  } catch (err) {
+    if (err.code === '23505') return res.status(400).json({ error: 'A product with this serial number already exists' });
+    console.error('Admin route error:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
 });
 
 router.put('/products/:id', auth, requireRole("product_manager"), async (req, res) => {
@@ -332,7 +336,11 @@ router.put('/products/:id', auth, requireRole("product_manager"), async (req, re
       [String(name).trim(), String(model).trim(), String(serial_no).trim(), description || null, parseInt(stock, 10), parseFloat(price), warranty || null, distributor || null, category, image_url || null, req.params.id]
     );
     res.json(result.rows[0]);
-  } catch (err) { console.error('Admin route error:', err); res.status(500).json({ error: 'Internal server error' }); }
+  } catch (err) {
+    if (err.code === '23505') return res.status(400).json({ error: 'A product with this serial number already exists' });
+    console.error('Admin route error:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
 });
 
 router.delete('/products/:id', auth, requireRole("product_manager"), async (req, res) => {
