@@ -13,20 +13,20 @@ CREATE TABLE IF NOT EXISTS notifications (
 -- Keep the reset account realistic on-screen. Older local resets used the
 -- final.demo.customer@example.com address; migrate it once if it exists.
 UPDATE users
-SET name = 'Derya Kaya',
-    email = 'derya.kaya@example.com',
+SET name = 'Ertem Kavaz',
+    email = 'ertematakavaz@gmail.com',
     phone = '5553080001',
     tax_id = '30820260001',
     home_address = 'Moda Caddesi No:42 D:8, Kadikoy/Istanbul',
     password = '$2b$10$k1Ltj9KYJ30gqXA10N0EE.MH/d68tiNQ4Ac5NEnBEg.e5xcZd2.VG',
     role = 'customer'
 WHERE email = 'final.demo.customer@example.com'
-  AND NOT EXISTS (SELECT 1 FROM users WHERE email = 'derya.kaya@example.com');
+  AND NOT EXISTS (SELECT 1 FROM users WHERE email = 'ertematakavaz@gmail.com');
 
 INSERT INTO users (name, email, phone, tax_id, home_address, password, role)
 VALUES (
-  'Derya Kaya',
-  'derya.kaya@example.com',
+  'Ertem Kavaz',
+  'ertematakavaz@gmail.com',
   '5553080001',
   '30820260001',
   'Moda Caddesi No:42 D:8, Kadikoy/Istanbul',
@@ -44,7 +44,7 @@ ON CONFLICT (email) DO UPDATE SET
 INSERT INTO addresses (user_id, title, full_address, city, district, postal_code, is_default)
 SELECT u.id, 'Home', 'Moda Caddesi No:42 D:8', 'Istanbul', 'Kadikoy', '34710', TRUE
 FROM users u
-WHERE u.email = 'derya.kaya@example.com'
+WHERE u.email = 'ertematakavaz@gmail.com'
   AND NOT EXISTS (
     SELECT 1
     FROM addresses a
@@ -58,31 +58,31 @@ SET full_address = 'Moda Caddesi No:42 D:8',
     district = 'Kadikoy',
     postal_code = '34710',
     is_default = TRUE
-WHERE user_id = (SELECT id FROM users WHERE email = 'derya.kaya@example.com')
+WHERE user_id = (SELECT id FROM users WHERE email = 'ertematakavaz@gmail.com')
   AND title = 'Home';
 
 -- Reset only the dedicated customer account. This makes the script safe to run
 -- before every rehearsal without damaging real catalog data.
 DELETE FROM payment_cards
-WHERE user_id = (SELECT id FROM users WHERE email = 'derya.kaya@example.com');
+WHERE user_id = (SELECT id FROM users WHERE email = 'ertematakavaz@gmail.com');
 
 DELETE FROM notifications
-WHERE user_id = (SELECT id FROM users WHERE email = 'derya.kaya@example.com');
+WHERE user_id = (SELECT id FROM users WHERE email = 'ertematakavaz@gmail.com');
 
 DELETE FROM return_requests
-WHERE user_id = (SELECT id FROM users WHERE email = 'derya.kaya@example.com');
+WHERE user_id = (SELECT id FROM users WHERE email = 'ertematakavaz@gmail.com');
 
 DELETE FROM reviews
-WHERE user_id = (SELECT id FROM users WHERE email = 'derya.kaya@example.com');
+WHERE user_id = (SELECT id FROM users WHERE email = 'ertematakavaz@gmail.com');
 
 DELETE FROM wishlist_items
-WHERE user_id = (SELECT id FROM users WHERE email = 'derya.kaya@example.com');
+WHERE user_id = (SELECT id FROM users WHERE email = 'ertematakavaz@gmail.com');
 
 DELETE FROM cart_items
-WHERE user_id = (SELECT id FROM users WHERE email = 'derya.kaya@example.com');
+WHERE user_id = (SELECT id FROM users WHERE email = 'ertematakavaz@gmail.com');
 
 DELETE FROM orders
-WHERE user_id = (SELECT id FROM users WHERE email = 'derya.kaya@example.com');
+WHERE user_id = (SELECT id FROM users WHERE email = 'ertematakavaz@gmail.com');
 
 -- Remove older artificial demo-only catalog rows so the product grid looks like
 -- a normal marketplace instead of a seeded test fixture.
@@ -221,11 +221,11 @@ INSERT INTO wishlist_items (user_id, product_id)
 SELECT u.id, p.id
 FROM users u
 JOIN products p ON p.serial_no = 'SN-EL-060'
-WHERE u.email = 'derya.kaya@example.com'
+WHERE u.email = 'ertematakavaz@gmail.com'
 ON CONFLICT (user_id, product_id) DO NOTHING;
 
 WITH demo_user AS (
-  SELECT id AS user_id FROM users WHERE email = 'derya.kaya@example.com'
+  SELECT id AS user_id FROM users WHERE email = 'ertematakavaz@gmail.com'
 ), demo_addr AS (
   SELECT a.id AS address_id
   FROM addresses a
