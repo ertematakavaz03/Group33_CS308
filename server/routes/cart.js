@@ -1,9 +1,15 @@
 const express = require('express');
 const router = express.Router();
+const { authenticate } = require('../middleware/customerAuth');
+
+router.use(authenticate);
 
 // GET user cart
 router.get('/:userId', async (req, res) => {
     const { userId } = req.params;
+    if (req.user.id !== Number(userId)) {
+        return res.status(403).json({ error: 'Forbidden' });
+    }
     try {
         const result = await req.db.query(`
             SELECT c.id as cart_item_id, c.product_id as id, c.quantity, 
@@ -34,7 +40,11 @@ router.get('/:userId', async (req, res) => {
 router.post('/:userId/sync', async (req, res) => {
     const { userId } = req.params;
     const { cartItems } = req.body; // array of { id: product_id, quantity }
-    
+
+    if (req.user.id !== Number(userId)) {
+        return res.status(403).json({ error: 'Forbidden' });
+    }
+
     if (!Array.isArray(cartItems) || cartItems.length === 0) {
         return res.json({ message: 'No items to sync' });
     }
@@ -73,6 +83,10 @@ router.post('/:userId', async (req, res) => {
     const { userId } = req.params;
     const { productId, quantity } = req.body;
     const qty = quantity === undefined ? 1 : quantity;
+
+    if (req.user.id !== Number(userId)) {
+        return res.status(403).json({ error: 'Forbidden' });
+    }
 
     if (!Number.isInteger(qty) || qty < 1) {
         return res.status(400).json({ error: 'Quantity must be a positive integer' });
@@ -115,6 +129,10 @@ router.put('/:userId/item/:productId', async (req, res) => {
     const { userId, productId } = req.params;
     const { quantity } = req.body;
 
+    if (req.user.id !== Number(userId)) {
+        return res.status(403).json({ error: 'Forbidden' });
+    }
+
     if (!Number.isInteger(quantity)) {
         return res.status(400).json({ error: 'Quantity must be an integer' });
     }
@@ -150,6 +168,9 @@ router.put('/:userId/item/:productId', async (req, res) => {
 // DELETE remove single item
 router.delete('/:userId/item/:productId', async (req, res) => {
     const { userId, productId } = req.params;
+    if (req.user.id !== Number(userId)) {
+        return res.status(403).json({ error: 'Forbidden' });
+    }
     try {
         await req.db.query('DELETE FROM cart_items WHERE user_id = $1 AND product_id = $2', [userId, productId]);
         res.json({ message: 'Item removed' });
@@ -162,6 +183,9 @@ router.delete('/:userId/item/:productId', async (req, res) => {
 // DELETE clear entire cart
 router.delete('/:userId', async (req, res) => {
     const { userId } = req.params;
+    if (req.user.id !== Number(userId)) {
+        return res.status(403).json({ error: 'Forbidden' });
+    }
     try {
         await req.db.query('DELETE FROM cart_items WHERE user_id = $1', [userId]);
         res.json({ message: 'Cart cleared' });

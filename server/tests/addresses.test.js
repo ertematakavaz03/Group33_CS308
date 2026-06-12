@@ -3,6 +3,14 @@ const express = require('express');
 const addressesRoutes = require('../routes/addresses');
 const mockDb = require('./mockDb');
 
+jest.mock('../middleware/customerAuth', () => ({
+  authenticate: (req, res, next) => {
+    req.user = { id: Number(req.params.userId || req.body.userId || req.body.user_id || 7), role: 'customer' };
+    next();
+  },
+  signCustomerToken: () => 'test-token'
+}));
+
 const app = express();
 app.use(express.json());
 app.use((req, res, next) => { req.db = mockDb; next(); });
@@ -65,6 +73,7 @@ describe('PUT /api/addresses/:id/default', () => {
 describe('DELETE /api/addresses/:id', () => {
   test('promotes another address when the default is deleted', async () => {
     mockDb.query
+      .mockResolvedValueOnce({ rows: [{ user_id: 7 }] }) // ownership check
       .mockResolvedValueOnce({ rows: [] }) // BEGIN
       .mockResolvedValueOnce({ rows: [{ user_id: 7, is_default: true }] }) // DELETE
       .mockResolvedValueOnce({ rows: [] }) // promote newest remaining

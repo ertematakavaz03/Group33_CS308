@@ -3,6 +3,14 @@ const express = require('express');
 const returnsRoutes = require('../routes/returns');
 const mockDb = require('./mockDb');
 
+jest.mock('../middleware/customerAuth', () => ({
+    authenticate: (req, res, next) => {
+        req.user = { id: Number(req.params.userId || req.body.userId || 4), role: 'customer' };
+        next();
+    },
+    signCustomerToken: () => 'test-token'
+}));
+
 const app = express();
 app.use(express.json());
 app.use((req, res, next) => { req.db = mockDb; next(); });

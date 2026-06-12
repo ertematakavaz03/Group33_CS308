@@ -5,6 +5,15 @@ const mockDb = require('./mockDb');
 
 jest.mock('../utils/sendOrderEmail', () => jest.fn().mockResolvedValue(true));
 
+jest.mock('../middleware/customerAuth', () => ({
+    authenticate: (req, res, next) => {
+        const urlMatch = req.url.match(/\/my-orders\/(\d+)/);
+        req.user = { id: Number(req.body.userId || (urlMatch && urlMatch[1]) || 1), role: 'customer' };
+        next();
+    },
+    signCustomerToken: () => 'test-token'
+}));
+
 const app = express();
 app.use(express.json());
 app.use((req, res, next) => { req.db = mockDb; next(); });

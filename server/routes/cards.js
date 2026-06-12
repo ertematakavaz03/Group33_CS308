@@ -1,6 +1,9 @@
 const express = require('express');
 const router = express.Router();
 const { encrypt, luhnCheck, detectBrand } = require('../utils/cardCrypto');
+const { authenticate } = require('../middleware/customerAuth');
+
+router.use(authenticate);
 
 // Shape a DB row into a safe, masked API response (never exposes the full PAN).
 const toSafeCard = (row) => ({
@@ -21,6 +24,9 @@ router.get('/:userId', async (req, res) => {
   if (!Number.isInteger(Number(userId))) {
     return res.status(400).json({ error: 'Invalid user id' });
   }
+  if (req.user.id !== Number(userId)) {
+    return res.status(403).json({ error: 'Forbidden' });
+  }
   try {
     const { rows } = await req.db.query(
       `SELECT id, cardholder_name, card_last4, card_brand,
@@ -39,12 +45,10 @@ router.get('/:userId', async (req, res) => {
 
 // Save a new card. The CVV is intentionally NOT accepted or stored.
 router.post('/', async (req, res) => {
-  const { userId, cardholder_name, card_number, expiry_month, expiry_year } = req.body;
+  const { cardholder_name, card_number, expiry_month, expiry_year } = req.body;
   const isDefault = req.body.is_default === true;
+  const userId = req.user.id;
 
-  if (!Number.isInteger(Number(userId))) {
-    return res.status(400).json({ error: 'A valid userId is required' });
-  }
   if (!cardholder_name || !String(cardholder_name).trim()) {
     return res.status(400).json({ error: 'Cardholder name is required' });
   }
@@ -113,10 +117,7 @@ router.post('/', async (req, res) => {
 // Set a card as the user's default
 router.put('/:id/default', async (req, res) => {
   const { id } = req.params;
-  const { userId } = req.body;
-  if (!Number.isInteger(Number(userId))) {
-    return res.status(400).json({ error: 'A valid userId is required' });
-  }
+  const userId = req.user.id;
   try {
     const owned = await req.db.query(
       'SELECT id FROM payment_cards WHERE id = $1 AND user_id = $2',
@@ -141,10 +142,7 @@ router.put('/:id/default', async (req, res) => {
 // If the deleted card was the default, the most recent remaining card is promoted.
 router.delete('/:id', async (req, res) => {
   const { id } = req.params;
-  const { userId } = req.body;
-  if (!Number.isInteger(Number(userId))) {
-    return res.status(400).json({ error: 'A valid userId is required' });
-  }
+  const userId = req.user.id;
   try {
     await req.db.query('BEGIN');
 

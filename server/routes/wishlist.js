@@ -1,11 +1,17 @@
 const express = require('express');
 const router = express.Router();
+const { authenticate } = require('../middleware/customerAuth');
+
+router.use(authenticate);
 
 // Get a user's wishlist with full product info + effective price
 router.get('/:userId', async (req, res) => {
   const { userId } = req.params;
   if (!Number.isInteger(Number(userId))) {
     return res.status(400).json({ error: 'Invalid user id' });
+  }
+  if (req.user.id !== Number(userId)) {
+    return res.status(403).json({ error: 'Forbidden' });
   }
   try {
     const { rows } = await req.db.query(
@@ -40,6 +46,9 @@ router.get('/:userId', async (req, res) => {
 // Check if a product is in the user's wishlist
 router.get('/:userId/has/:productId', async (req, res) => {
   const { userId, productId } = req.params;
+  if (req.user.id !== Number(userId)) {
+    return res.status(403).json({ error: 'Forbidden' });
+  }
   try {
     const { rows } = await req.db.query(
       'SELECT 1 FROM wishlist_items WHERE user_id = $1 AND product_id = $2',
@@ -58,6 +67,9 @@ router.post('/:userId', async (req, res) => {
   const { productId } = req.body;
   if (!Number.isInteger(Number(userId)) || !Number.isInteger(Number(productId))) {
     return res.status(400).json({ error: 'Invalid user or product id' });
+  }
+  if (req.user.id !== Number(userId)) {
+    return res.status(403).json({ error: 'Forbidden' });
   }
   try {
     await req.db.query(
@@ -79,6 +91,9 @@ router.post('/:userId', async (req, res) => {
 // Remove a product from the wishlist
 router.delete('/:userId/:productId', async (req, res) => {
   const { userId, productId } = req.params;
+  if (req.user.id !== Number(userId)) {
+    return res.status(403).json({ error: 'Forbidden' });
+  }
   try {
     const result = await req.db.query(
       'DELETE FROM wishlist_items WHERE user_id = $1 AND product_id = $2 RETURNING id',

@@ -2,11 +2,15 @@ const express = require('express');
 const router = express.Router();
 const sendOrderEmail = require('../utils/sendOrderEmail');
 const generateInvoicePDF = require('../utils/generateInvoicePDF');
+const { authenticate } = require('../middleware/customerAuth');
+
+router.use(authenticate);
 
 // customer checkout
 router.post('/checkout', async (req, res) => {
   try {
-    const { userId, userEmail, userName, items, shippingAddressId, billingAddressId } = req.body;
+    const { userEmail, userName, items, shippingAddressId, billingAddressId } = req.body;
+    const userId = req.user.id;
 
     if (!userId || !userEmail || !Array.isArray(items) || items.length === 0) {
       return res.status(400).json({ error: 'Checkout requires a user, email, and at least one item.' });
@@ -124,6 +128,10 @@ router.get('/my-orders/:userId', async (req, res) => {
   try {
     const { userId } = req.params;
 
+    if (req.user.id !== Number(userId)) {
+      return res.status(403).json({ error: 'Forbidden' });
+    }
+
     const ordersResult = await req.db.query(
       `SELECT o.id, o.total_amount, o.status, o.created_at,
               a_ship.title      AS shipping_title,
@@ -164,7 +172,7 @@ router.get('/my-orders/:userId', async (req, res) => {
 router.get('/:id/invoice', async (req, res) => {
   try {
     const { id } = req.params;
-    const { userId } = req.query;
+    const userId = req.user.id;
 
     const orderResult = await req.db.query(
       `SELECT o.*, u.name AS user_name, u.email AS user_email,
@@ -228,11 +236,7 @@ router.get('/:id/invoice', async (req, res) => {
 // customer: cancel own order (only while in "processing" state)
 router.put('/:id/cancel', async (req, res) => {
   const { id } = req.params;
-  const { userId } = req.body;
-
-  if (!Number.isInteger(Number(userId))) {
-    return res.status(400).json({ error: 'userId is required' });
-  }
+  const userId = req.user.id;
 
   try {
     await req.db.query('BEGIN');

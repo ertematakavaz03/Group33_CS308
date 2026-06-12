@@ -1,10 +1,17 @@
 const express = require('express');
 const router = express.Router();
+const { authenticate } = require('../middleware/customerAuth');
+
+router.use(authenticate);
 
 // Get all addresses of a user
 router.get('/:userId', async (req, res) => {
   try {
     const { userId } = req.params;
+
+    if (req.user.id !== Number(userId)) {
+      return res.status(403).json({ error: 'Forbidden' });
+    }
 
     const result = await req.db.query(
       'SELECT * FROM addresses WHERE user_id = $1 ORDER BY is_default DESC, created_at DESC',
@@ -22,17 +29,14 @@ router.get('/:userId', async (req, res) => {
 router.post('/', async (req, res) => {
   try {
     const {
-      user_id,
       title,
       full_address,
       city,
       district,
       postal_code
     } = req.body;
+    const user_id = req.user.id;
 
-    if (!user_id) {
-      return res.status(400).json({ error: 'user_id is required' });
-    }
     const cleanTitle = String(title || '').trim();
     if (!cleanTitle || cleanTitle.length > 100) {
       return res.status(400).json({ error: 'Title is required and must be under 100 characters' });
@@ -96,6 +100,13 @@ router.put('/:id', async (req, res) => {
     if (cleanPostal && cleanPostal.length !== 5) {
       return res.status(400).json({ error: 'Postal code must be exactly 5 digits' });
     }
+
+    const existing = await req.db.query('SELECT user_id FROM addresses WHERE id = $1', [id]);
+    if (existing.rows.length === 0) return res.status(404).json({ error: 'Address not found' });
+    if (req.user.id !== Number(existing.rows[0].user_id)) {
+      return res.status(403).json({ error: 'Forbidden' });
+    }
+
     const result = await req.db.query(
       `UPDATE addresses SET title=$1, full_address=$2, city=$3, district=$4, postal_code=$5
        WHERE id=$6 RETURNING *`,
@@ -113,8 +124,7 @@ router.put('/:id', async (req, res) => {
 router.put('/:id/default', async (req, res) => {
   try {
     const { id } = req.params;
-    const userId = req.body.userId || req.body.user_id;
-    if (!userId) return res.status(400).json({ error: 'userId is required' });
+    const userId = req.user.id;
 
     const owned = await req.db.query(
       'SELECT id FROM addresses WHERE id = $1 AND user_id = $2',
@@ -144,6 +154,13 @@ router.put('/:id/default', async (req, res) => {
 router.delete('/:id', async (req, res) => {
   try {
     const { id } = req.params;
+
+    const existing = await req.db.query('SELECT user_id FROM addresses WHERE id = $1', [id]);
+    if (existing.rows.length === 0) return res.status(404).json({ error: 'Address not found' });
+    if (req.user.id !== Number(existing.rows[0].user_id)) {
+      return res.status(403).json({ error: 'Forbidden' });
+    }
+
     await req.db.query('BEGIN');
     const deleted = await req.db.query('DELETE FROM addresses WHERE id=$1 RETURNING user_id, is_default', [id]);
     if (deleted.rows.length === 0) {

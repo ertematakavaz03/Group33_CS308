@@ -5,6 +5,14 @@ const mockDb = require('./mockDb');
 process.env.CARD_ENCRYPTION_KEY =
   process.env.CARD_ENCRYPTION_KEY || 'a'.repeat(64);
 
+jest.mock('../middleware/customerAuth', () => ({
+  authenticate: (req, res, next) => {
+    req.user = { id: Number(req.params.userId || req.body.userId || 1), role: 'customer' };
+    next();
+  },
+  signCustomerToken: () => 'test-token'
+}));
+
 const cardsRoutes = require('../routes/cards');
 const { encrypt, decrypt, luhnCheck, detectBrand } = require('../utils/cardCrypto');
 

@@ -1,12 +1,16 @@
 const express = require('express');
 const router = express.Router();
+const { authenticate } = require('../middleware/customerAuth');
+
+router.use(authenticate);
 
 // Customer: create a return request for a delivered order item
 router.post('/', async (req, res) => {
-  const { userId, orderItemId, reason } = req.body;
+  const { orderItemId, reason } = req.body;
+  const userId = req.user.id;
 
-  if (!Number.isInteger(Number(userId)) || !Number.isInteger(Number(orderItemId))) {
-    return res.status(400).json({ error: 'userId and orderItemId are required' });
+  if (!Number.isInteger(Number(orderItemId))) {
+    return res.status(400).json({ error: 'orderItemId is required' });
   }
   if (reason && String(reason).length > 1000) {
     return res.status(400).json({ error: 'Return reason must be under 1000 characters' });
@@ -68,6 +72,9 @@ router.post('/', async (req, res) => {
 // Customer: list own return requests
 router.get('/my/:userId', async (req, res) => {
   const { userId } = req.params;
+  if (req.user.id !== Number(userId)) {
+    return res.status(403).json({ error: 'Forbidden' });
+  }
   try {
     const { rows } = await req.db.query(
       `SELECT rr.*, p.name AS product_name, p.image_url

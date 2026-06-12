@@ -1,10 +1,16 @@
 const express = require('express');
 const router = express.Router();
+const { authenticate } = require('../middleware/customerAuth');
+
+router.use(authenticate);
 
 router.get('/:userId', async (req, res) => {
   const { userId } = req.params;
   if (!Number.isInteger(Number(userId))) {
     return res.status(400).json({ error: 'Invalid user id' });
+  }
+  if (req.user.id !== Number(userId)) {
+    return res.status(403).json({ error: 'Forbidden' });
   }
 
   try {
@@ -24,9 +30,9 @@ router.get('/:userId', async (req, res) => {
 
 router.put('/:id/read', async (req, res) => {
   const { id } = req.params;
-  const { userId } = req.body;
-  if (!Number.isInteger(Number(id)) || !Number.isInteger(Number(userId))) {
-    return res.status(400).json({ error: 'Invalid notification id or user id' });
+  const userId = req.user.id;
+  if (!Number.isInteger(Number(id))) {
+    return res.status(400).json({ error: 'Invalid notification id' });
   }
 
   try {

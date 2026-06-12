@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const bcrypt = require('bcrypt');
 const rateLimit = require('../utils/rateLimiter');
+const { authenticate, signCustomerToken } = require('../middleware/customerAuth');
 
 const SALT_ROUNDS = 10;
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -22,7 +23,10 @@ const registerLimiter = rateLimit({ windowMs: 60 * 60 * 1000, max: 15, message: 
 
 
 // get user profile by id
-router.get('/user/:id', async (req, res) => {
+router.get('/user/:id', authenticate, async (req, res) => {
+    if (req.user.id !== Number(req.params.id)) {
+        return res.status(403).json({ error: 'Forbidden' });
+    }
     try {
         const result = await req.db.query(
             'SELECT id, name, email, phone, tax_id, home_address, role FROM users WHERE id = $1',
@@ -101,7 +105,8 @@ router.post('/register', registerLimiter, async (req, res) => {
             [cleanName, cleanEmail, phoneDigits, cleanTaxId, cleanHomeAddress, hashedPassword, 'customer']
         );
 
-        res.status(201).json({ message: 'User registered successfully!', user: result.rows[0] });
+        const token = signCustomerToken(result.rows[0]);
+        res.status(201).json({ message: 'User registered successfully!', user: result.rows[0], token });
     } catch (err) {
         console.error('Registration error:', err);
         res.status(500).json({ error: 'Internal server error' });
@@ -134,7 +139,8 @@ router.post('/login', loginLimiter, async (req, res) => {
         }
 
         const { password: _, ...safeUser } = user;
-        res.status(200).json({ message: 'Login successful', user: safeUser });
+        const token = signCustomerToken(safeUser);
+        res.status(200).json({ message: 'Login successful', user: safeUser, token });
     } catch (err) {
         console.error('Login error:', err);
         res.status(500).json({ error: 'Internal server error' });
@@ -142,9 +148,13 @@ router.post('/login', loginLimiter, async (req, res) => {
 });
 
 // update user profile
-router.put('/update/:id', async (req, res) => {
+router.put('/update/:id', authenticate, async (req, res) => {
     const { id } = req.params;
     const { name, email, phone, password, tax_id, home_address } = req.body;
+
+    if (req.user.id !== Number(id)) {
+        return res.status(403).json({ error: 'Forbidden' });
+    }
 
     try {
         const existing = await req.db.query('SELECT * FROM users WHERE id = $1', [id]);
