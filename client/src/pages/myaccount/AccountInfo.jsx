@@ -148,7 +148,10 @@ const AccountInfo = () => {
             <div style={s.avatar}>{initials}</div>
             <div>
               <h2 style={{ margin: "0 0 4px", fontSize: "1.2rem", fontWeight: "800", color: "#111827" }}>{liveUser?.name}</h2>
-              <span style={{ display: "inline-block", background: "#FEF2F2", color: "var(--pazaryolu-red)", padding: "2px 12px", borderRadius: "999px", fontSize: "0.75rem", fontWeight: "700" }}>{roleLabel}</span>
+              <span style={{ display: "inline-flex", alignItems: "center", gap: "8px" }}>
+                <span style={{ display: "inline-block", background: "#FEF2F2", color: "var(--pazaryolu-red)", padding: "2px 12px", borderRadius: "999px", fontSize: "0.75rem", fontWeight: "700" }}>{roleLabel}</span>
+                <span style={{ display: "inline-block", textAlign: "center", background: "#F3F4F6", color: "#374151", padding: "2px 12px", borderRadius: "999px", fontSize: "0.75rem", fontWeight: "700" }}>User ID: {liveUser?.id}</span>
+              </span>
             </div>
           </div>
           {!isEditing && (

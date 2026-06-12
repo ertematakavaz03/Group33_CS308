@@ -33,6 +33,7 @@ const MyOrders = () => {
   const [cancellingId, setCancellingId] = useState(null);
   const [cancelError, setCancelError]   = useState("");
   const [returns, setReturns]           = useState([]);
+  const [reviewedProductIds, setReviewedProductIds] = useState(new Set());
   const [returnItem, setReturnItem]     = useState(null);   // the order item being returned
   const [returnReason, setReturnReason] = useState("");
   const [returnBusy, setReturnBusy]     = useState(false);
@@ -55,6 +56,10 @@ const MyOrders = () => {
       .then((data) => { setOrders(data); setLoading(false); })
       .catch(() => { setError("Failed to load orders."); setLoading(false); });
     loadReturns(currentUser.id);
+    fetch(`http://localhost:5001/api/products/user-reviews/${currentUser.id}`)
+      .then((r) => r.json())
+      .then((data) => setReviewedProductIds(new Set((Array.isArray(data) ? data : []).map((r) => r.product_id))))
+      .catch(() => {});
   }, [currentUser?.id]);
 
   const toggle = (id) => setExpanded((prev) => (prev === id ? null : id));
@@ -181,7 +186,8 @@ const MyOrders = () => {
                   {order.items?.map((item, idx) => {
                     const ret = returnByItem[item.order_item_id];
                     const inReturnWindow = isWithinReturnWindow(order.created_at);
-                    const canReturn = order.status === "delivered" && inReturnWindow && !ret && item.order_item_id;
+                    const isReviewed = reviewedProductIds.has(item.product_id);
+                    const canReturn = order.status === "delivered" && inReturnWindow && !ret && !isReviewed && item.order_item_id;
                     return (
                     <div key={idx} style={s.itemRow}>
                       <div style={s.itemImg}>
@@ -207,6 +213,11 @@ const MyOrders = () => {
                         {order.status === "delivered" && !ret && !inReturnWindow && (
                           <div style={{ marginTop: "5px", color: "#9CA3AF", fontSize: "0.75rem", fontWeight: "700" }}>
                             Return window expired
+                          </div>
+                        )}
+                        {order.status === "delivered" && !ret && inReturnWindow && isReviewed && (
+                          <div style={{ marginTop: "5px", color: "#9CA3AF", fontSize: "0.75rem", fontWeight: "700" }}>
+                            Reviewed items cannot be returned
                           </div>
                         )}
                       </div>
@@ -329,7 +340,7 @@ const MyOrders = () => {
               onChange={(e) => setReturnReason(e.target.value)}
               rows="3"
               placeholder="Tell us why you're returning this item…"
-              style={{ width: "100%", boxSizing: "border-box", padding: "0.7rem 0.85rem", borderRadius: "10px", border: "1.5px solid #E5E7EB", fontSize: "0.9rem", fontFamily: "inherit", resize: "vertical", marginBottom: "1rem" }}
+              style={{ width: "100%", boxSizing: "border-box", padding: "0.7rem 0.85rem", borderRadius: "10px", border: "1.5px solid #E5E7EB", fontSize: "0.9rem", fontFamily: "inherit", resize: "vertical", marginBottom: "1rem", background: "#fff", color: "#111" }}
             />
             {returnError && (
               <p style={{ background: "#FEF2F2", color: "#DC2626", padding: "0.6rem 0.85rem", borderRadius: "8px", margin: "0 0 1rem", fontSize: "0.85rem", fontWeight: "600" }}>

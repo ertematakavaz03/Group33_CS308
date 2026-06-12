@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
+import { BarChart, Bar, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer } from "recharts";
 
 const getTabsByRole = (role) => {
   if (role === "product_manager") {
@@ -56,6 +56,26 @@ const AdminDashboard = () => {
     .filter((r) => r.status === "approved")
     .reduce((sum, r) => sum + Number(r.refund_amount || (Number(r.price_at_purchase || 0) * Number(r.quantity || 0))), 0);
   const netProfit = grossRevenue - approvedRefunds;
+
+  const dailyTotals = {};
+  orders.forEach((order) => {
+    const date = new Date(order.created_at).toISOString().slice(0, 10);
+    if (!dailyTotals[date]) dailyTotals[date] = { date, revenue: 0, loss: 0 };
+    dailyTotals[date].revenue += Number(order.total_amount || 0);
+  });
+  returns.forEach((r) => {
+    if (r.status !== "approved") return;
+    const refTimestamp = r.resolved_at || r.created_at;
+    if (!refTimestamp) return;
+    const date = new Date(refTimestamp).toISOString().slice(0, 10);
+    if (dateFilter.startDate && date < dateFilter.startDate) return;
+    if (dateFilter.endDate && date > dateFilter.endDate) return;
+    if (!dailyTotals[date]) dailyTotals[date] = { date, revenue: 0, loss: 0 };
+    dailyTotals[date].loss += Number(r.refund_amount || (Number(r.price_at_purchase || 0) * Number(r.quantity || 0)));
+  });
+  const profitChartData = Object.values(dailyTotals)
+    .sort((a, b) => a.date.localeCompare(b.date))
+    .map((d) => ({ ...d, profit: d.revenue - d.loss }));
 
   const q = searchQuery.trim().toLowerCase();
   const matches = (...fields) => !q || fields.some((f) => String(f ?? "").toLowerCase().includes(q));
@@ -982,6 +1002,24 @@ const AdminDashboard = () => {
       <YAxis />
       <Tooltip />
       <Bar dataKey="total" fill="#8B0000" isAnimationActive={false} />
+    </BarChart>
+  </ResponsiveContainer>
+</div>
+
+<div style={{ marginTop: "2rem", height: "300px" }}>
+  <h3 style={{ marginBottom: "1rem" }}>
+    Loss / Profit by Date
+  </h3>
+
+  <ResponsiveContainer width="100%" height="100%">
+    <BarChart data={profitChartData}>
+      <XAxis dataKey="date" />
+      <YAxis domain={[(dataMin) => (dataMin < 0 ? dataMin : 0), 'auto']} />
+      <Tooltip />
+      <Legend />
+      <Bar dataKey="revenue" fill="#8B0000" name="Revenue" isAnimationActive={false} />
+      <Bar dataKey="loss" fill="#F59E0B" name="Refund Loss" isAnimationActive={false} />
+      <Bar dataKey="profit" fill="#16A34A" name="Net Profit" isAnimationActive={false} />
     </BarChart>
   </ResponsiveContainer>
 </div>

@@ -648,27 +648,32 @@ router.put('/returns/:id', auth, requireRole("sales_manager"), async (req, res) 
 
     await req.db.query('COMMIT');
 
-    if (status === 'approved') {
-      try {
-        await req.db.query(
-          `INSERT INTO notifications (user_id, type, title, message)
-           VALUES ($1, 'refund', $2, $3)`,
-          [
-            request.user_id,
-            `Refund approved for ${request.product_name || 'your product'}`,
-            `Your refund of $${Number(request.refund_amount || 0).toFixed(2)} has been approved and the returned item was added back to stock.`
-          ]
-        );
-      } catch (err) {
-        console.error('Refund notification insert failed:', err);
-      }
-
-      sendRefundEmail(request.user_email, {
-        customerName: request.user_name,
-        productName: request.product_name,
-        refundAmount: request.refund_amount
-      }).catch((err) => console.error(`Refund email failed for ${request.user_email}:`, err.message));
+    try {
+      await req.db.query(
+        `INSERT INTO notifications (user_id, type, title, message)
+         VALUES ($1, 'refund', $2, $3)`,
+        status === 'approved'
+          ? [
+              request.user_id,
+              `Refund approved for ${request.product_name || 'your product'}`,
+              `Your refund of $${Number(request.refund_amount || 0).toFixed(2)} has been approved and the returned item was added back to stock.`
+            ]
+          : [
+              request.user_id,
+              `Refund rejected for ${request.product_name || 'your product'}`,
+              `Your return request for ${request.product_name || 'your product'} has been reviewed and was not approved.`
+            ]
+      );
+    } catch (err) {
+      console.error('Refund notification insert failed:', err);
     }
+
+    sendRefundEmail(request.user_email, {
+      customerName: request.user_name,
+      productName: request.product_name,
+      refundAmount: request.refund_amount,
+      status
+    }).catch((err) => console.error(`Refund email failed for ${request.user_email}:`, err.message));
 
     res.json({ message: `Return request ${status}`, request: updated.rows[0] });
   } catch (err) {
