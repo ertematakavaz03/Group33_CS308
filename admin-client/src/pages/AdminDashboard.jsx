@@ -33,6 +33,16 @@ const AdminDashboard = () => {
   const [discountProduct, setDiscountProduct] = useState(null);
   const [discountForm, setDiscountForm] = useState({ price: "", discount_percentage: "", discount_start: "", discount_end: "" });
   const [dateFilter, setDateFilter] = useState({ startDate: "", endDate: "" });
+  const [searchQuery, setSearchQuery] = useState("");
+  const [sortConfig, setSortConfig] = useState({ key: null, direction: null });
+
+  const handleSort = (key) => {
+    setSortConfig((prev) => {
+      if (prev.key !== key) return { key, direction: "desc" };
+      if (prev.direction === "desc") return { key, direction: "asc" };
+      return { key: null, direction: null };
+    });
+  };
 
   const token = sessionStorage.getItem("adminToken");
   const adminRole = sessionStorage.getItem("adminRole");
@@ -46,6 +56,127 @@ const AdminDashboard = () => {
     .filter((r) => r.status === "approved")
     .reduce((sum, r) => sum + Number(r.refund_amount || (Number(r.price_at_purchase || 0) * Number(r.quantity || 0))), 0);
   const netProfit = grossRevenue - approvedRefunds;
+
+  const q = searchQuery.trim().toLowerCase();
+  const matches = (...fields) => !q || fields.some((f) => String(f ?? "").toLowerCase().includes(q));
+
+  const filteredProducts = products.filter((p) => matches(p.name, p.category, p.model, p.serial_no, p.distributor));
+  const sortedProducts = [...filteredProducts];
+  if (sortConfig.key) {
+    const getValue = (p) => {
+      switch (sortConfig.key) {
+        case "name": return (p.name || "").toLowerCase();
+        case "category": return (p.category || "").toLowerCase();
+        case "price": return Number(p.is_on_discount ? p.effective_price : p.price) || 0;
+        case "discount": return Number(p.discount_percentage) || 0;
+        case "stock": return Number(p.stock) || 0;
+        default: return 0;
+      }
+    };
+    sortedProducts.sort((a, b) => {
+      const av = getValue(a);
+      const bv = getValue(b);
+      const result = av < bv ? -1 : av > bv ? 1 : 0;
+      return sortConfig.direction === "desc" ? -result : result;
+    });
+  }
+  const filteredCategories = categories.filter((c) => matches(c.name, c.description));
+  const sortedCategories = [...filteredCategories];
+  if (sortConfig.key && ["catId", "catName"].includes(sortConfig.key)) {
+    const getValue = (c) => {
+      switch (sortConfig.key) {
+        case "catId": return Number(c.id) || 0;
+        case "catName": return (c.name || "").toLowerCase();
+        default: return 0;
+      }
+    };
+    sortedCategories.sort((a, b) => {
+      const av = getValue(a);
+      const bv = getValue(b);
+      const result = av < bv ? -1 : av > bv ? 1 : 0;
+      return sortConfig.direction === "desc" ? -result : result;
+    });
+  }
+  const filteredOrders = orders.filter((o) => matches(o.id, o.user_email || o.email, o.status, o.full_address, o.city));
+  const sortedOrders = [...filteredOrders];
+  if (sortConfig.key && ["id", "user", "items", "total", "date"].includes(sortConfig.key)) {
+    const getValue = (o) => {
+      switch (sortConfig.key) {
+        case "id": return Number(o.id) || 0;
+        case "user": return (o.user_email || o.email || "").toLowerCase();
+        case "items": return (o.items?.[0]?.product_name || "").toLowerCase();
+        case "total": return Number(o.total_amount) || 0;
+        case "date": return o.created_at ? new Date(o.created_at).getTime() : 0;
+        default: return 0;
+      }
+    };
+    sortedOrders.sort((a, b) => {
+      const av = getValue(a);
+      const bv = getValue(b);
+      const result = av < bv ? -1 : av > bv ? 1 : 0;
+      return sortConfig.direction === "desc" ? -result : result;
+    });
+  }
+  const filteredDeliveries = deliveries.filter((d) => matches(d.delivery_id, d.customer_id, d.product_name, d.status, d.full_address, d.city));
+  const sortedDeliveries = [...filteredDeliveries];
+  if (sortConfig.key && ["delId", "delCustomer", "delProduct", "delQty", "delTotal"].includes(sortConfig.key)) {
+    const getValue = (d) => {
+      switch (sortConfig.key) {
+        case "delId": return Number(d.delivery_id) || 0;
+        case "delCustomer": return Number(d.customer_id) || 0;
+        case "delProduct": return (d.product_name || "").toLowerCase();
+        case "delQty": return Number(d.quantity) || 0;
+        case "delTotal": return Number(d.total_price) || 0;
+        default: return 0;
+      }
+    };
+    sortedDeliveries.sort((a, b) => {
+      const av = getValue(a);
+      const bv = getValue(b);
+      const result = av < bv ? -1 : av > bv ? 1 : 0;
+      return sortConfig.direction === "desc" ? -result : result;
+    });
+  }
+  const filteredReviews = reviews.filter((r) => matches(r.product_name, r.user_name, r.comment, r.status));
+  const sortedReviews = [...filteredReviews];
+  if (sortConfig.key && ["revProduct", "revUser", "revRating", "revDate"].includes(sortConfig.key)) {
+    const getValue = (r) => {
+      switch (sortConfig.key) {
+        case "revProduct": return (r.product_name || "").toLowerCase();
+        case "revUser": return (r.user_name || "").toLowerCase();
+        case "revRating": return Number(r.rating) || 0;
+        case "revDate": return r.created_at ? new Date(r.created_at).getTime() : 0;
+        default: return 0;
+      }
+    };
+    sortedReviews.sort((a, b) => {
+      const av = getValue(a);
+      const bv = getValue(b);
+      const result = av < bv ? -1 : av > bv ? 1 : 0;
+      return sortConfig.direction === "desc" ? -result : result;
+    });
+  }
+  const filteredReturns = returns.filter((r) => matches(r.order_id, r.product_name, r.user_name, r.user_email, r.reason, r.status));
+  const sortedReturns = [...filteredReturns];
+  if (sortConfig.key && ["order", "product", "customer", "qty", "date", "status"].includes(sortConfig.key)) {
+    const getValue = (r) => {
+      switch (sortConfig.key) {
+        case "order": return Number(r.order_id) || 0;
+        case "product": return (r.product_name || "").toLowerCase();
+        case "customer": return (r.user_name || "").toLowerCase();
+        case "qty": return Number(r.quantity) || 0;
+        case "date": return r.created_at ? new Date(r.created_at).getTime() : 0;
+        case "status": return (r.status || "").toLowerCase();
+        default: return 0;
+      }
+    };
+    sortedReturns.sort((a, b) => {
+      const av = getValue(a);
+      const bv = getValue(b);
+      const result = av < bv ? -1 : av > bv ? 1 : 0;
+      return sortConfig.direction === "desc" ? -result : result;
+    });
+  }
 
   const fetchAll = useCallback(() => {
     // Resilient loader: handles an expired/invalid session (401) by sending
@@ -316,7 +447,7 @@ const AdminDashboard = () => {
       {/* Tabs */}
       <div style={{ display: "flex", gap: "0.5rem", padding: "1.5rem 2rem 0" }}>
         {tabs.map(t => (
-          <button key={t} onClick={() => setActiveTab(t)} style={{ padding: "0.6rem 1.5rem", borderRadius: "8px 8px 0 0", border: "none", cursor: "pointer", fontWeight: "700", background: activeTab === t ? "#fff" : "#e5e7eb", color: activeTab === t ? "#b91c1c" : "#6b7280" }}>{t}</button>
+          <button key={t} onClick={() => { setActiveTab(t); setSearchQuery(""); setSortConfig({ key: null, direction: null }); }} style={{ padding: "0.6rem 1.5rem", borderRadius: "8px 8px 0 0", border: "none", cursor: "pointer", fontWeight: "700", background: activeTab === t ? "#fff" : "#e5e7eb", color: activeTab === t ? "#b91c1c" : "#6b7280" }}>{t}</button>
         ))}
       </div>
 
@@ -325,11 +456,14 @@ const AdminDashboard = () => {
         {/* PRODUCTS TAB */}
         {activeTab === "Products" && (
           <>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem" }}>
-              <h2 style={{ margin: 0, fontWeight: "800" }}>Products ({products.length})</h2>
-              {adminRole === "product_manager" && (
-              <button onClick={() => { resetForm(); setEditProduct(null); setShowAddForm(true); }} style={{ background: "#b91c1c", color: "#fff", border: "none", padding: "0.6rem 1.2rem", borderRadius: "8px", cursor: "pointer", fontWeight: "700" }}>+ Add Product</button>
-            )}
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem", gap: "1rem", flexWrap: "wrap" }}>
+              <h2 style={{ margin: 0, fontWeight: "800" }}>Products ({filteredProducts.length})</h2>
+              <div style={{ display: "flex", gap: "0.6rem", alignItems: "center" }}>
+                <input type="text" placeholder="Search products..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} style={{ ...fInputStyle, width: "220px" }} />
+                {adminRole === "product_manager" && (
+                <button onClick={() => { resetForm(); setEditProduct(null); setShowAddForm(true); }} style={{ background: "#b91c1c", color: "#fff", border: "none", padding: "0.6rem 1.2rem", borderRadius: "8px", cursor: "pointer", fontWeight: "700" }}>+ Add Product</button>
+              )}
+              </div>
             </div>
             {adminRole === "product_manager" && products.filter(p => Number(p.stock) <= 5).length > 0 && (
   <div
@@ -462,13 +596,27 @@ const AdminDashboard = () => {
               <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.9rem" }}>
                 <thead>
                   <tr style={{ borderBottom: "2px solid #f3f4f6" }}>
-                    {["Image", "Name", "Category", "Price", "Discount", "Stock", "Actions"].map(h => (
-                      <th key={h} style={{ textAlign: "left", padding: "0.7rem 1rem", color: "#6b7280", fontWeight: "700", fontSize: "0.8rem", textTransform: "uppercase" }}>{h}</th>
+                    {[
+                      { label: "Image", key: null },
+                      { label: "Name", key: "name" },
+                      { label: "Category", key: "category" },
+                      { label: "Price", key: "price" },
+                      { label: "Discount", key: "discount" },
+                      { label: "Stock", key: "stock" },
+                      { label: "Actions", key: null },
+                    ].map(({ label, key }) => (
+                      <th
+                        key={label}
+                        onClick={() => key && handleSort(key)}
+                        style={{ textAlign: "left", padding: "0.7rem 1rem", color: "#6b7280", fontWeight: "700", fontSize: "0.8rem", textTransform: "uppercase", cursor: key ? "pointer" : "default", userSelect: "none" }}
+                      >
+                        {label}{key && sortConfig.key === key ? (sortConfig.direction === "desc" ? " ▼" : " ▲") : ""}
+                      </th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
-                  {products.map(p => (
+                  {sortedProducts.map(p => (
                     <tr key={p.id} style={{ borderBottom: "1px solid #f3f4f6" }}>
                       <td style={{ padding: "0.7rem 1rem" }}>
                         <img src={p.image_url} alt={p.name} style={{ width: "50px", height: "40px", objectFit: "cover", borderRadius: "6px", background: "#f3f4f6" }} onError={e => e.target.style.display = "none"} />
@@ -520,11 +668,14 @@ const AdminDashboard = () => {
         {/* CATEGORIES TAB */}
         {activeTab === "Categories" && (
           <>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem" }}>
-              <h2 style={{ margin: 0, fontWeight: "800" }}>Categories ({categories.length})</h2>
-              {adminRole === "product_manager" && (
-                <button onClick={() => { resetCategoryForm(); setEditCategory(null); setShowAddCategoryForm(true); }} style={{ background: "#b91c1c", color: "#fff", border: "none", padding: "0.6rem 1.2rem", borderRadius: "8px", cursor: "pointer", fontWeight: "700" }}>+ Add Category</button>
-              )}
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem", gap: "1rem", flexWrap: "wrap" }}>
+              <h2 style={{ margin: 0, fontWeight: "800" }}>Categories ({filteredCategories.length})</h2>
+              <div style={{ display: "flex", gap: "0.6rem", alignItems: "center" }}>
+                <input type="text" placeholder="Search categories..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} style={{ ...fInputStyle, width: "220px" }} />
+                {adminRole === "product_manager" && (
+                  <button onClick={() => { resetCategoryForm(); setEditCategory(null); setShowAddCategoryForm(true); }} style={{ background: "#b91c1c", color: "#fff", border: "none", padding: "0.6rem 1.2rem", borderRadius: "8px", cursor: "pointer", fontWeight: "700" }}>+ Add Category</button>
+                )}
+              </div>
             </div>
 
             {/* Add/Edit Category Form */}
@@ -555,13 +706,24 @@ const AdminDashboard = () => {
               <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.9rem" }}>
                 <thead>
                   <tr style={{ borderBottom: "2px solid #f3f4f6" }}>
-                    {["ID", "Name", "Description", "Actions"].map(h => (
-                      <th key={h} style={{ textAlign: "left", padding: "0.7rem 1rem", color: "#6b7280", fontWeight: "700", fontSize: "0.8rem", textTransform: "uppercase" }}>{h}</th>
+                    {[
+                      { label: "ID", key: "catId" },
+                      { label: "Name", key: "catName" },
+                      { label: "Description", key: null },
+                      { label: "Actions", key: null },
+                    ].map(({ label, key }) => (
+                      <th
+                        key={label}
+                        onClick={() => key && handleSort(key)}
+                        style={{ textAlign: "left", padding: "0.7rem 1rem", color: "#6b7280", fontWeight: "700", fontSize: "0.8rem", textTransform: "uppercase", cursor: key ? "pointer" : "default", userSelect: "none" }}
+                      >
+                        {label}{key && sortConfig.key === key ? (sortConfig.direction === "desc" ? " ▼" : " ▲") : ""}
+                      </th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
-                  {categories.map(c => (
+                  {sortedCategories.map(c => (
                     <tr key={c.id} style={{ borderBottom: "1px solid #f3f4f6" }}>
                       <td style={{ padding: "0.7rem 1rem", color: "#6b7280" }}>#{c.id}</td>
                       <td style={{ padding: "0.7rem 1rem", fontWeight: "600" }}>{c.name}</td>
@@ -578,7 +740,7 @@ const AdminDashboard = () => {
                   ))}
                 </tbody>
               </table>
-              {categories.length === 0 && <p style={{ color: "#6b7280", textAlign: "center", padding: "2rem" }}>No categories yet.</p>}
+              {filteredCategories.length === 0 && <p style={{ color: "#6b7280", textAlign: "center", padding: "2rem" }}>No categories found.</p>}
             </div>
           </>
         )}
@@ -587,8 +749,9 @@ const AdminDashboard = () => {
         {activeTab === "Orders" && (
           <>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "1rem", marginBottom: "1rem", flexWrap: "wrap" }}>
-              <h2 style={{ margin: 0, fontWeight: "800" }}>Orders & Invoices ({orders.length})</h2>
+              <h2 style={{ margin: 0, fontWeight: "800" }}>Orders & Invoices ({filteredOrders.length})</h2>
               <div style={{ display: "flex", gap: "0.6rem", alignItems: "center", flexWrap: "wrap" }}>
+                <input type="text" placeholder="Search orders..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} style={{ ...fInputStyle, width: "200px" }} />
                 <input type="date" value={dateFilter.startDate} onChange={(e) => setDateFilter({ ...dateFilter, startDate: e.target.value })} style={fInputStyle} />
                 <input type="date" value={dateFilter.endDate} onChange={(e) => setDateFilter({ ...dateFilter, endDate: e.target.value })} style={fInputStyle} />
                 {(dateFilter.startDate || dateFilter.endDate) && (
@@ -600,13 +763,28 @@ const AdminDashboard = () => {
               <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.9rem" }}>
                 <thead>
                   <tr style={{ borderBottom: "2px solid #f3f4f6" }}>
-                  {["ID", "User", "Items", "Delivery Address", "Total", "Status", "Date", "Invoice"].map(h => (
-                      <th key={h} style={{ textAlign: "left", padding: "0.7rem 1rem", color: "#6b7280", fontWeight: "700", fontSize: "0.8rem", textTransform: "uppercase" }}>{h}</th>
+                    {[
+                      { label: "ID", key: "id" },
+                      { label: "User", key: "user" },
+                      { label: "Items", key: "items" },
+                      { label: "Delivery Address", key: null },
+                      { label: "Total", key: "total" },
+                      { label: "Status", key: null },
+                      { label: "Date", key: "date" },
+                      { label: "Invoice", key: null },
+                    ].map(({ label, key }) => (
+                      <th
+                        key={label}
+                        onClick={() => key && handleSort(key)}
+                        style={{ textAlign: "left", padding: "0.7rem 1rem", color: "#6b7280", fontWeight: "700", fontSize: "0.8rem", textTransform: "uppercase", cursor: key ? "pointer" : "default", userSelect: "none" }}
+                      >
+                        {label}{key && sortConfig.key === key ? (sortConfig.direction === "desc" ? " ▼" : " ▲") : ""}
+                      </th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
-                  {orders.map(o => (
+                  {sortedOrders.map(o => (
                     <tr key={o.id} style={{ borderBottom: "1px solid #f3f4f6" }}>
                       <td style={{ padding: "0.7rem 1rem", color: "#6b7280" }}>#{o.id}</td>
                       <td style={{ padding: "0.7rem 1rem", fontWeight: "600" }}>{o.user_email || o.email || "-"}</td>
@@ -672,7 +850,7 @@ const AdminDashboard = () => {
                   ))}
                 </tbody>
               </table>
-              {orders.length === 0 && <p style={{ color: "#6b7280", textAlign: "center", padding: "2rem" }}>No orders yet.</p>}
+              {filteredOrders.length === 0 && <p style={{ color: "#6b7280", textAlign: "center", padding: "2rem" }}>No orders found.</p>}
             </div>
           </>
         )}
@@ -680,18 +858,35 @@ const AdminDashboard = () => {
         {/* DELIVERIES TAB */}
         {activeTab === "Deliveries" && (
           <>
-            <h2 style={{ marginTop: 0, fontWeight: "800" }}>Delivery List ({deliveries.length})</h2>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem", gap: "1rem", flexWrap: "wrap" }}>
+              <h2 style={{ margin: 0, fontWeight: "800" }}>Delivery List ({filteredDeliveries.length})</h2>
+              <input type="text" placeholder="Search deliveries..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} style={{ ...fInputStyle, width: "220px" }} />
+            </div>
             <div style={{ overflowX: "auto" }}>
               <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.9rem" }}>
                 <thead>
                   <tr style={{ borderBottom: "2px solid #f3f4f6" }}>
-                  {["Delivery ID", "Customer ID", "Product", "Qty", "Total Price", "Delivery Address", "Status"].map(h => (
-                      <th key={h} style={{ textAlign: "left", padding: "0.7rem 1rem", color: "#6b7280", fontWeight: "700", fontSize: "0.8rem", textTransform: "uppercase" }}>{h}</th>
+                    {[
+                      { label: "Delivery ID", key: "delId" },
+                      { label: "Customer ID", key: "delCustomer" },
+                      { label: "Product", key: "delProduct" },
+                      { label: "Qty", key: "delQty" },
+                      { label: "Total Price", key: "delTotal" },
+                      { label: "Delivery Address", key: null },
+                      { label: "Status", key: null },
+                    ].map(({ label, key }) => (
+                      <th
+                        key={label}
+                        onClick={() => key && handleSort(key)}
+                        style={{ textAlign: "left", padding: "0.7rem 1rem", color: "#6b7280", fontWeight: "700", fontSize: "0.8rem", textTransform: "uppercase", cursor: key ? "pointer" : "default", userSelect: "none" }}
+                      >
+                        {label}{key && sortConfig.key === key ? (sortConfig.direction === "desc" ? " ▼" : " ▲") : ""}
+                      </th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
-                  {deliveries.map(d => (
+                  {sortedDeliveries.map(d => (
                     <tr key={d.delivery_id} style={{ borderBottom: "1px solid #f3f4f6" }}>
                       <td style={{ padding: "0.7rem 1rem", color: "#6b7280" }}>#{d.delivery_id}</td>
                       <td style={{ padding: "0.7rem 1rem", color: "#6b7280" }}>User #{d.customer_id}</td>
@@ -724,7 +919,7 @@ const AdminDashboard = () => {
                   ))}
                 </tbody>
               </table>
-              {deliveries.length === 0 && <p style={{ color: "#6b7280", textAlign: "center", padding: "2rem" }}>No deliveries yet.</p>}
+              {filteredDeliveries.length === 0 && <p style={{ color: "#6b7280", textAlign: "center", padding: "2rem" }}>No deliveries found.</p>}
             </div>
           </>
         )}
@@ -824,18 +1019,35 @@ const AdminDashboard = () => {
         {/* REVIEWS TAB */}
         {activeTab === "Reviews" && (
           <>
-            <h2 style={{ marginTop: 0, fontWeight: "800" }}>Reviews ({reviews.length})</h2>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem", gap: "1rem", flexWrap: "wrap" }}>
+              <h2 style={{ margin: 0, fontWeight: "800" }}>Reviews ({filteredReviews.length})</h2>
+              <input type="text" placeholder="Search reviews..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} style={{ ...fInputStyle, width: "220px" }} />
+            </div>
             <div style={{ overflowX: "auto" }}>
               <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.9rem" }}>
                 <thead>
                   <tr style={{ borderBottom: "2px solid #f3f4f6" }}>
-                    {["Product", "User", "Rating", "Comment", "Date", "Status", "Action"].map(h => (
-                      <th key={h} style={{ textAlign: "left", padding: "0.7rem 1rem", color: "#6b7280", fontWeight: "700", fontSize: "0.8rem", textTransform: "uppercase" }}>{h}</th>
+                    {[
+                      { label: "Product", key: "revProduct" },
+                      { label: "User", key: "revUser" },
+                      { label: "Rating", key: "revRating" },
+                      { label: "Comment", key: null },
+                      { label: "Date", key: "revDate" },
+                      { label: "Status", key: null },
+                      { label: "Action", key: null },
+                    ].map(({ label, key }) => (
+                      <th
+                        key={label}
+                        onClick={() => key && handleSort(key)}
+                        style={{ textAlign: "left", padding: "0.7rem 1rem", color: "#6b7280", fontWeight: "700", fontSize: "0.8rem", textTransform: "uppercase", cursor: key ? "pointer" : "default", userSelect: "none" }}
+                      >
+                        {label}{key && sortConfig.key === key ? (sortConfig.direction === "desc" ? " ▼" : " ▲") : ""}
+                      </th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
-                  {reviews.map(r => (
+                  {sortedReviews.map(r => (
                     <tr key={r.id} style={{ borderBottom: "1px solid #f3f4f6" }}>
                       <td style={{ padding: "0.7rem 1rem", fontWeight: "600", maxWidth: "150px" }}>{r.product_name}</td>
                       <td style={{ padding: "0.7rem 1rem" }}>{r.user_name}</td>
@@ -866,7 +1078,7 @@ const AdminDashboard = () => {
                   ))}
                 </tbody>
               </table>
-              {reviews.length === 0 && <p style={{ color: "#6b7280", textAlign: "center", padding: "2rem" }}>No reviews to moderate.</p>}
+              {filteredReviews.length === 0 && <p style={{ color: "#6b7280", textAlign: "center", padding: "2rem" }}>No reviews found.</p>}
             </div>
           </>
         )}
@@ -874,25 +1086,43 @@ const AdminDashboard = () => {
         {/* RETURNS TAB */}
         {activeTab === "Returns" && (
           <>
-            <h2 style={{ marginTop: 0, fontWeight: "800" }}>
-              Return Requests ({returns.length})
-              {returns.filter(r => r.status === "pending").length > 0 && (
-                <span style={{ marginLeft: "0.6rem", background: "#fef3c7", color: "#d97706", padding: "2px 10px", borderRadius: "20px", fontSize: "0.8rem", fontWeight: "700" }}>
-                  {returns.filter(r => r.status === "pending").length} pending
-                </span>
-              )}
-            </h2>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem", gap: "1rem", flexWrap: "wrap" }}>
+              <h2 style={{ margin: 0, fontWeight: "800" }}>
+                Return Requests ({filteredReturns.length})
+                {returns.filter(r => r.status === "pending").length > 0 && (
+                  <span style={{ marginLeft: "0.6rem", background: "#fef3c7", color: "#d97706", padding: "2px 10px", borderRadius: "20px", fontSize: "0.8rem", fontWeight: "700" }}>
+                    {returns.filter(r => r.status === "pending").length} pending
+                  </span>
+                )}
+              </h2>
+              <input type="text" placeholder="Search returns..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} style={{ ...fInputStyle, width: "220px" }} />
+            </div>
             <div style={{ overflowX: "auto" }}>
               <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.9rem" }}>
                 <thead>
                   <tr style={{ borderBottom: "2px solid #f3f4f6" }}>
-                    {["Order", "Product", "Customer", "Qty", "Reason", "Date", "Status", "Action"].map(h => (
-                      <th key={h} style={{ textAlign: "left", padding: "0.7rem 1rem", color: "#6b7280", fontWeight: "700", fontSize: "0.8rem", textTransform: "uppercase" }}>{h}</th>
+                    {[
+                      { label: "Order", key: "order" },
+                      { label: "Product", key: "product" },
+                      { label: "Customer", key: "customer" },
+                      { label: "Qty", key: "qty" },
+                      { label: "Reason", key: null },
+                      { label: "Date", key: "date" },
+                      { label: "Status", key: "status" },
+                      { label: "Action", key: null },
+                    ].map(({ label, key }) => (
+                      <th
+                        key={label}
+                        onClick={() => key && handleSort(key)}
+                        style={{ textAlign: "left", padding: "0.7rem 1rem", color: "#6b7280", fontWeight: "700", fontSize: "0.8rem", textTransform: "uppercase", cursor: key ? "pointer" : "default", userSelect: "none" }}
+                      >
+                        {label}{key && sortConfig.key === key ? (sortConfig.direction === "desc" ? " ▼" : " ▲") : ""}
+                      </th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
-                  {returns.map(r => (
+                  {sortedReturns.map(r => (
                     <tr key={r.id} style={{ borderBottom: "1px solid #f3f4f6" }}>
                       <td style={{ padding: "0.7rem 1rem", color: "#6b7280" }}>#{r.order_id}</td>
                       <td style={{ padding: "0.7rem 1rem", fontWeight: "600", maxWidth: "160px" }}>{r.product_name || "—"}</td>
@@ -933,7 +1163,7 @@ const AdminDashboard = () => {
                   ))}
                 </tbody>
               </table>
-              {returns.length === 0 && <p style={{ color: "#6b7280", textAlign: "center", padding: "2rem" }}>No return requests.</p>}
+              {filteredReturns.length === 0 && <p style={{ color: "#6b7280", textAlign: "center", padding: "2rem" }}>No return requests found.</p>}
             </div>
             <p style={{ color: "#9ca3af", fontSize: "0.8rem", marginTop: "1rem" }}>
               Approving a return automatically restocks the product.
